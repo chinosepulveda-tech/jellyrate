@@ -160,78 +160,80 @@ export default function UserProfilePage() {
         <ZigZag />
       </header>
 
-      {/* Profile info */}
-      <div className="bg-white px-4 pt-5 pb-0">
-        <div className="flex items-start gap-4">
+      {/* ── Profile Card ── */}
+      <div className="bg-white px-4 pt-6 pb-0">
+        <div className="flex flex-col items-center">
+          {/* Avatar centered */}
           <div
-            className="w-[82px] h-[82px] rounded-full bg-[#ece8e3] overflow-hidden flex items-center justify-center font-black text-2xl text-[#999] flex-shrink-0"
-            style={{ border: "3px solid white", boxShadow: "0 0 0 2px #e0dbd4" }}
+            className="w-24 h-24 rounded-full bg-[#ece8e3] overflow-hidden flex items-center justify-center font-black text-3xl text-[#999]"
+            style={{ boxShadow: "0 0 0 3px white, 0 0 0 5px #e8b96a" }}
           >
             {profile.avatar_url
-              ? <Image src={profile.avatar_url} alt="" width={82} height={82} className="object-cover" unoptimized />
+              ? <Image src={profile.avatar_url} alt="" width={96} height={96} className="object-cover" unoptimized />
               : (profile.username[0] ?? "?").toUpperCase()
             }
           </div>
-          <div className="flex-1 min-w-0 pt-1">
-            <p className="text-[11px] font-bold text-[#bbb] uppercase tracking-widest">@{profile.username}</p>
-            <p className="font-black text-xl text-[#2a2a2a] uppercase tracking-tight leading-tight">
-              {profile.full_name || profile.username}
-            </p>
-            {profile.bio && (
-              <p className="text-xs text-[#777] mt-1 leading-snug">{profile.bio}</p>
+
+          {/* Name + username centered */}
+          <h2 className="mt-3 text-xl font-black text-[#2a2a2a] text-center leading-tight">
+            {profile.full_name || profile.username}
+          </h2>
+          <p className="text-sm font-semibold text-[#5bbcb3] mt-0.5">@{profile.username}</p>
+          {profile.bio && (
+            <p className="text-xs text-[#777] mt-2 text-center leading-snug max-w-[260px]">{profile.bio}</p>
+          )}
+
+          {/* Action buttons */}
+          <div className="mt-4 flex gap-2 w-full max-w-[280px]">
+            {isSelf ? (
+              <Link href="/profile/edit" className="flex-1">
+                <div className="flex items-center justify-center gap-1.5 py-2.5 rounded-2xl border border-[#e0dbd4] bg-white active:bg-[#f5f2ee]">
+                  <svg width="14" height="14" fill="none" stroke="#4a4a4a" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                  </svg>
+                  <span className="text-xs font-black text-[#4a4a4a] uppercase tracking-widest">Editar perfil</span>
+                </div>
+              </Link>
+            ) : (
+              <>
+                <button
+                  onClick={toggleFollow}
+                  disabled={followLoading}
+                  className={`flex-1 py-2.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${
+                    isFollowing ? "bg-[#f0ede8] border border-[#e0dbd4] text-[#4a4a4a]" : "bg-[#e8363a] text-white"
+                  } ${followLoading ? "opacity-60" : ""}`}
+                >
+                  {followLoading ? "..." : isFollowing ? "✓ Siguiendo" : "Seguir"}
+                </button>
+                {isFollowing && (
+                  <button className="px-4 py-2.5 rounded-2xl border border-[#e0dbd4] text-xs font-black text-[#4a4a4a] bg-white uppercase tracking-wide">
+                    Mensaje
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="flex gap-0 mt-4">
-          <div className="flex-1 flex flex-col items-center py-2.5 border-r border-[#e8e3dd]">
+        {/* Stats row */}
+        <div className="flex mt-5 border-t border-[#f0ede8]">
+          <div className="flex-1 flex flex-col items-center py-3">
             <span className="text-xl font-black text-[#e8363a]">{stats.total}</span>
-            <span className="text-[9px] font-black text-[#bbb] uppercase tracking-widest">JELLYS</span>
+            <span className="text-[9px] font-black text-[#bbb] uppercase tracking-widest mt-0.5">FOTOS</span>
           </div>
-          <Link href={`/profile/${username}/followers`} className="flex-1 flex flex-col items-center py-2.5 border-r border-[#e8e3dd] active:bg-[#f5f2ee]">
+          <Link href={`/profile/${username}/followers`} className="flex-1 flex flex-col items-center py-3 border-x border-[#f0ede8] active:bg-[#fafaf9]">
             <span className="text-xl font-black text-[#e8363a]">{stats.followers}</span>
-            <span className="text-[9px] font-black text-[#bbb] uppercase tracking-widest">SEGUIDORES</span>
+            <span className="text-[9px] font-black text-[#bbb] uppercase tracking-widest mt-0.5">SEGUIDORES</span>
           </Link>
-          <Link href={`/profile/${username}/following`} className="flex-1 flex flex-col items-center py-2.5 active:bg-[#f5f2ee]">
+          <Link href={`/profile/${username}/following`} className="flex-1 flex flex-col items-center py-3 active:bg-[#fafaf9]">
             <span className="text-xl font-black text-[#e8363a]">{stats.following}</span>
-            <span className="text-[9px] font-black text-[#bbb] uppercase tracking-widest">SIGUIENDO</span>
+            <span className="text-[9px] font-black text-[#bbb] uppercase tracking-widest mt-0.5">SIGUIENDO</span>
           </Link>
-        </div>
-
-        {/* CTA buttons */}
-        <div className="py-3 flex gap-2">
-          {isSelf ? (
-            <Link href="/profile/edit" className="flex-1">
-              <div className="w-full py-2.5 rounded-xl border border-[#e0dbd4] text-xs font-black text-[#4a4a4a] uppercase tracking-widest text-center bg-[#f8f7f5]">
-                Editar Perfil
-              </div>
-            </Link>
-          ) : (
-            <>
-              <button
-                onClick={toggleFollow}
-                disabled={followLoading}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                  isFollowing
-                    ? "bg-[#f0ede8] border border-[#e0dbd4] text-[#4a4a4a]"
-                    : "bg-[#e8363a] text-white shadow-sm"
-                } ${followLoading ? "opacity-60" : ""}`}
-              >
-                {followLoading ? "..." : isFollowing ? "✓ Siguiendo" : "Seguir"}
-              </button>
-              {isFollowing && (
-                <button className="px-4 py-2.5 rounded-xl border border-[#e0dbd4] text-xs font-black text-[#4a4a4a] bg-[#f8f7f5] uppercase tracking-wide">
-                  Mensaje
-                </button>
-              )}
-            </>
-          )}
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-white border-t border-[#e8e3dd] sticky top-[93px] z-30">
+      <div className="flex bg-white border-t border-[#e8e3dd] sticky top-[52px] z-30">
         <button
           onClick={() => handleTabChange("jellies")}
           className={`flex-1 py-3 flex items-center justify-center border-b-2 transition-colors ${activeTab === "jellies" ? "border-[#e8363a]" : "border-transparent"}`}
