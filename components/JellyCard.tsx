@@ -119,6 +119,36 @@ function ActionSheet({
   );
 }
 
+// Strip leading emoji chars from legacy category strings like "📦 Producto"
+function cleanCategory(cat: string): string {
+  return cat.replace(/^[\p{Emoji}\s]+/u, "").trim();
+}
+
+const CATEGORY_ICONS: Record<string, React.ReactNode> = {
+  comida:    <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5M6 10.608v8.15c0 1.028.835 1.862 1.862 1.862h8.276c1.027 0 1.862-.834 1.862-1.862v-8.15M6 10.608h12" /></svg>,
+  película:  <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h1.5C5.496 19.5 6 18.996 6 18.375m-3.75.125v-14.25m0 14.25h1.5m0 0h14.25M3.375 5.25A1.125 1.125 0 002.25 6.375v11.25c0 .621.504 1.125 1.125 1.125M21 5.25h-1.5c-.621 0-1.125.504-1.125 1.125m2.625-1.125A1.125 1.125 0 0121.75 6.375v11.25a1.125 1.125 0 01-1.125 1.125M21 5.25v14.25m0-14.25h-1.5m0 0H6" /></svg>,
+  bebida:    <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.769 0-5.536-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" /></svg>,
+  lugar:     <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>,
+  música:    <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" /></svg>,
+  producto:  <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>,
+  libro:     <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>,
+  viaje:     <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>,
+  servicio:  <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" /></svg>,
+  juego:     <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M14.25 6.087c0-.355.186-.676.401-.959.221-.29.349-.634.349-1.003 0-1.036-1.007-1.875-2.25-1.875s-2.25.84-2.25 1.875c0 .369.128.713.349 1.003.215.283.401.604.401.959v0a.64.64 0 01-.657.643 48.39 48.39 0 01-4.163-.3c.186 1.613.293 3.25.315 4.907a.656.656 0 01-.658.663v0c-.355 0-.676-.186-.959-.401a1.647 1.647 0 00-1.003-.349c-1.036 0-1.875 1.007-1.875 2.25s.84 2.25 1.875 2.25c.369 0 .713-.128 1.003-.349.283-.215.604-.401.959-.401v0c.31 0 .555.26.532.57a48.039 48.039 0 01-.642 5.056c1.518.19 3.058.309 4.616.354a.64.64 0 00.657-.643v0c0-.355-.186-.676-.401-.959a1.647 1.647 0 01-.349-1.003c0-1.035 1.008-1.875 2.25-1.875 1.243 0 2.25.84 2.25 1.875 0 .369-.128.713-.349 1.003-.215.283-.401.604-.401.959v0c0 .333.277.599.61.58a48.1 48.1 0 005.427-.63 48.05 48.05 0 00.582-4.717.532.532 0 00-.533-.57v0c-.355 0-.676.186-.959.401-.29.221-.634.349-1.003.349-1.035 0-1.875-1.007-1.875-2.25s.84-2.25 1.875-2.25c.37 0 .713.128 1.003.349.283.215.604.401.959.401v0a.656.656 0 00.658-.663 48.422 48.422 0 00-.37-5.36c-1.886.342-3.81.574-5.766.689a.578.578 0 01-.61-.58v0z" /></svg>,
+};
+
+function CategoryBadge({ category }: { category: string }) {
+  const clean = cleanCategory(category);
+  const key = clean.toLowerCase();
+  const icon = CATEGORY_ICONS[key];
+  return (
+    <div className="flex items-center gap-1 text-[#888]">
+      {icon}
+      <span className="text-[10px] font-bold uppercase tracking-wide">{clean}</span>
+    </div>
+  );
+}
+
 export function ScoreColor(score: number) {
   if (score >= 9) return "#16a34a";
   if (score >= 8) return "#22c55e";
@@ -193,7 +223,7 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
     await supabase.from("likes").insert({ user_id: currentUserId, jellyrate_id: jelly.id });
     setLikes(l => l + 1);
     setLiked(true);
-    toast.show("¡Te gustó!", "❤️", "success");
+    toast.show("¡Te gustó!", "♥", "success");
   }
 
   async function toggleLike() {
@@ -212,11 +242,11 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
     if (saved) {
       await supabase.from("saves").delete().match({ user_id: currentUserId, jellyrate_id: jelly.id });
       setSaved(false);
-      toast.show("Guardado eliminado", "🔖");
+      toast.show("Guardado eliminado", "×");
     } else {
       await supabase.from("saves").insert({ user_id: currentUserId, jellyrate_id: jelly.id });
       setSaved(true);
-      toast.show("¡Guardado!", "🔖", "success");
+      toast.show("¡Guardado!", "✓", "success");
     }
   }
 
@@ -229,7 +259,7 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
     });
     setShowRejelly(false);
     setRejellyDone(true);
-    toast.show(`ReJelly ${rejellyScore}/10 enviado`, "⚡", "success");
+    toast.show(`ReJelly ${rejellyScore}/10 enviado`, "★", "success");
     setRejellies(r => r + 1);
   }
 
@@ -237,44 +267,69 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
 
   return (
     <article className="border-b border-[#ede9e3] bg-white">
+
       {/* ── Header ── */}
       <div className="flex items-center gap-3 px-4 py-3">
-        <Link href={`/profile/${username}`}>
-          <div className="w-9 h-9 rounded-full bg-[#ece8e3] overflow-hidden flex-shrink-0 border-2 border-[#e0dbd4]">
+        {/* Avatar */}
+        <Link href={`/profile/${username}`} className="flex-shrink-0">
+          <div className="w-10 h-10 rounded-full bg-[#ece8e3] overflow-hidden border-2 border-[#e0dbd4]">
             {jelly.profile?.avatar_url ? (
-              <Image src={jelly.profile.avatar_url} alt="" width={36} height={36} className="object-cover" />
+              <Image src={jelly.profile.avatar_url} alt="" width={40} height={40} className="object-cover" unoptimized />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-xs font-black text-[#aaa]">
+              <div className="w-full h-full flex items-center justify-center text-sm font-black text-[#aaa]">
                 {username[0].toUpperCase()}
               </div>
             )}
           </div>
         </Link>
 
+        {/* Username + title */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <Link href={`/profile/${username}`}>
-              <span className="font-black text-xs uppercase tracking-widest text-[#5bbcb3]">{username}</span>
-            </Link>
-            {jelly.category && (
-              <span className="text-[10px] text-[#bbb]">{jelly.category}</span>
-            )}
-          </div>
-          {jelly.place_name && (
-            <p className="text-[11px] text-[#aaa] truncate leading-tight">📍 {jelly.place_name}</p>
-          )}
+          <Link href={`/profile/${username}`}>
+            <p className="font-black text-xs uppercase tracking-widest text-[#2a2a2a] leading-tight">{username}</p>
+          </Link>
+          <p className="text-xs text-[#888] truncate leading-tight mt-0.5">{jelly.title}</p>
         </div>
 
-        <div className="flex-shrink-0 flex items-center gap-1">
-          <span className="text-[11px] text-[#bbb]">{timeAgo}</span>
-          <button
-            onClick={() => setShowActions(true)}
-            className="w-7 h-7 flex items-center justify-center text-[#ccc] active:text-[#999]"
-          >
-            <svg width="15" height="15" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+        {/* Time + location (right column) */}
+        <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
+          {/* Time */}
+          <div className="flex items-center gap-1">
+            <span className="text-[11px] font-bold text-[#aaa]">{timeAgo}</span>
+            <svg width="11" height="11" fill="none" stroke="#ccc" strokeWidth={1.8} viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9" /><path strokeLinecap="round" d="M12 6v6l3.5 2" />
             </svg>
-          </button>
+          </div>
+          {/* Location */}
+          {jelly.place_name ? (
+            <div className="flex items-center gap-0.5 max-w-[110px]">
+              <svg width="9" height="9" fill="#e8363a" viewBox="0 0 24 24">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+              </svg>
+              <span className="text-[10px] text-[#aaa] truncate">{jelly.place_name}</span>
+            </div>
+          ) : (
+            /* 3-dot menu when no location, else below */
+            <button
+              onClick={() => setShowActions(true)}
+              className="w-6 h-6 flex items-center justify-center text-[#ccc] active:text-[#999]"
+            >
+              <svg width="14" height="14" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+              </svg>
+            </button>
+          )}
+          {/* 3-dot when location exists */}
+          {jelly.place_name && (
+            <button
+              onClick={() => setShowActions(true)}
+              className="w-5 h-5 flex items-center justify-center text-[#ccc] active:text-[#999] -mt-0.5"
+            >
+              <svg width="13" height="13" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
@@ -293,15 +348,26 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
           </div>
         )}
 
-        {/* Score badge */}
+        {/* ── Score badge: top-left ── */}
         <div
-          className="absolute bottom-0 left-0 flex items-center justify-center shadow-lg"
-          style={{ backgroundColor: scoreColor, width: 52, height: 52, borderTopRightRadius: 12, borderBottomRightRadius: 12 }}
+          className="absolute top-0 left-0 flex items-center justify-center"
+          style={{
+            backgroundColor: "#e8363a",
+            width: 56,
+            height: 56,
+            borderBottomRightRadius: 14,
+            boxShadow: "3px 3px 10px rgba(0,0,0,0.35)",
+          }}
         >
-          <span className="text-2xl font-black text-white leading-none">{jelly.score}</span>
+          <span
+            className="text-2xl font-black text-white leading-none"
+            style={{ textShadow: "0 2px 6px rgba(0,0,0,0.4)" }}
+          >
+            {jelly.score}
+          </span>
         </div>
 
-        {/* Audience */}
+        {/* Audience badge */}
         {jelly.audience && jelly.audience !== "all" && (
           <div className="absolute top-2 right-2 bg-black/50 rounded-full px-2 py-0.5">
             <span className="text-[10px] font-bold text-white">{jelly.audience === "male" ? "♂" : "♀"}</span>
@@ -319,36 +385,21 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
         )}
       </div>
 
-      {/* ── Title strip ── */}
+      {/* ── "Created by" bar ── */}
       <div className="bg-[#2a2a2a] px-4 py-2 flex items-center justify-between">
-        <p className="text-sm font-black text-white truncate flex-1 mr-3">{jelly.title}</p>
-        <span className="text-[10px] font-black uppercase tracking-widest flex-shrink-0" style={{ color: scoreColor }}>
-          {ScoreLabel(jelly.score)}
-        </span>
-      </div>
-
-      {/* ── Friends / World bar ── */}
-      <div className="flex items-stretch h-9">
-        <div className="flex-1 flex items-center justify-center gap-1.5 bg-[#e8363a]">
-          <span className="text-[10px] font-black text-white/80 uppercase tracking-widest">Amigos</span>
-          <span className="text-sm font-black text-white">{jelly.friend_avg != null ? jelly.friend_avg.toFixed(1) : "—"}</span>
-        </div>
-        <div className="w-9 flex items-center justify-center bg-[#5bbcb3]">
-          <span className="text-[9px] font-black text-white/80 uppercase tracking-[0.15em]">JR</span>
-        </div>
-        <div className="flex-1 flex items-center justify-center gap-1.5 bg-[#d6d2cc]">
-          <span className="text-sm font-black text-[#4a4a4a]">{jelly.global_avg != null ? jelly.global_avg.toFixed(1) : "—"}</span>
-          <span className="text-[10px] font-black text-[#777] uppercase tracking-widest">World</span>
-        </div>
+        <p className="text-xs text-[#aaa]">
+          Created by{" "}
+          <Link href={`/profile/${username}`}>
+            <span className="font-black text-white">{username}</span>
+          </Link>
+        </p>
+        {jelly.category && <CategoryBadge category={jelly.category} />}
       </div>
 
       {/* ── Caption ── */}
       {jelly.description && (
-        <div className="px-4 py-2.5 bg-white">
-          <p className="text-sm text-[#444] leading-snug">
-            <span className="font-black text-[#5bbcb3] mr-1.5 text-xs uppercase">{username}</span>
-            {jelly.description}
-          </p>
+        <div className="px-4 py-2.5 bg-white border-t border-[#f5f2ee]">
+          <p className="text-sm text-[#444] leading-snug">{jelly.description}</p>
         </div>
       )}
 
@@ -378,15 +429,11 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
         {/* ReJelly */}
         <button
           onClick={() => !rejellyDone && setShowRejelly(!showRejelly)}
-          className="flex items-center gap-1 px-3 py-2 active:scale-90 transition-transform"
+          className="flex items-center gap-1.5 px-3 py-2 active:scale-90 transition-transform"
         >
-          <svg width="20" height="20"
-            fill={rejellyDone ? "#f59e0b" : "none"}
-            stroke={rejellyDone ? "#f59e0b" : "#c8c3bc"}
-            strokeWidth={1.8} viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
-          </svg>
+          <span className="text-xs font-black uppercase tracking-wide" style={{ color: rejellyDone ? "#f59e0b" : "#c8c3bc" }}>
+            Rejelly
+          </span>
           {rejellies > 0 && <span className="text-xs font-bold" style={{ color: rejellyDone ? "#f59e0b" : "#c8c3bc" }}>{rejellies}</span>}
         </button>
 
@@ -424,7 +471,7 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
             </button>
             <button onClick={submitRejelly}
               className="flex-1 py-2.5 rounded-xl bg-[#e8363a] text-xs font-black text-white uppercase tracking-wide">
-              ReJelly ⚡
+              ReJelly
             </button>
           </div>
         </div>
@@ -467,11 +514,13 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "ahora";
-  if (mins < 60) return `${mins}m`;
+  if (mins < 1) return "AHORA";
+  if (mins < 60) return `${mins} MIN`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h`;
+  if (hrs < 24) return `${hrs} HR`;
   const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d`;
-  return `${Math.floor(days / 7)}sem`;
+  if (days < 30) return `${days} D`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} MES`;
+  return `${Math.floor(months / 12)} AÑO`;
 }

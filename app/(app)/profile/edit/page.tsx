@@ -18,9 +18,6 @@ function ZigzagBorder() {
   );
 }
 
-type Gender = "male" | "female" | "other" | "";
-type FeedFilter = "all" | "male" | "female";
-
 export default function EditProfilePage() {
   const router = useRouter();
   const supabase = createClient();
@@ -30,8 +27,6 @@ export default function EditProfilePage() {
   const [username, setUsername] = useState("");
   const [fullName, setFullName] = useState("");
   const [bio, setBio] = useState("");
-  const [gender, setGender] = useState<Gender>("");
-  const [feedFilter, setFeedFilter] = useState<FeedFilter>("all");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -55,8 +50,6 @@ export default function EditProfilePage() {
         setUsername(data.username ?? "");
         setFullName(data.full_name ?? "");
         setBio(data.bio ?? "");
-        setGender((data.gender as Gender) ?? "");
-        setFeedFilter((data.feed_gender_filter as FeedFilter) ?? "all");
         setAvatarUrl(data.avatar_url);
       }
     }
@@ -95,8 +88,6 @@ export default function EditProfilePage() {
           username,
           full_name: fullName || null,
           bio: bio || null,
-          gender: gender || null,
-          feed_gender_filter: feedFilter,
           avatar_url: newAvatarUrl,
         })
         .eq("id", userId);
@@ -197,58 +188,7 @@ export default function EditProfilePage() {
           <p className="text-xs text-[#bbb] text-right">{bio.length}/150</p>
         </div>
 
-        {/* Gender */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-black text-[#999] uppercase tracking-widest">Género</label>
-          <div className="flex gap-2">
-            {([
-              { value: "male", label: "♂ Hombre" },
-              { value: "female", label: "♀ Mujer" },
-              { value: "other", label: "Otro" },
-            ] as { value: Gender; label: string }[]).map(({ value, label }) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setGender(gender === value ? "" : value)}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-black border transition-colors ${
-                  gender === value
-                    ? "bg-[#5bbcb3] border-[#5bbcb3] text-white"
-                    : "bg-white border-[#e0dbd4] text-[#777]"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Feed filter */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-black text-[#999] uppercase tracking-widest">Ver en el feed</label>
-          <div className="flex gap-2">
-            {([
-              { value: "all", label: "Todos" },
-              { value: "male", label: "♂ Hombres" },
-              { value: "female", label: "♀ Mujeres" },
-            ] as { value: FeedFilter; label: string }[]).map(({ value, label }) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setFeedFilter(value)}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-black border transition-colors ${
-                  feedFilter === value
-                    ? "bg-[#e8363a] border-[#e8363a] text-white"
-                    : "bg-white border-[#e0dbd4] text-[#777]"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-[#bbb]">Filtra el contenido del feed según tu preferencia</p>
-        </div>
-
-        {error && <p className="text-sm text-[#e8363a] font-bold text-center">{error}</p>}
+        {error &&<p className="text-sm text-[#e8363a] font-bold text-center">{error}</p>}
         {success && <p className="text-sm text-[#22c55e] font-bold text-center uppercase tracking-wide">¡Guardado! ✓</p>}
 
         <button

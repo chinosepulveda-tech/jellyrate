@@ -114,9 +114,9 @@ function notifText(n: Notification) {
   const u = <Link href={`/profile/${n.actor_username}`}><span className="font-black text-[#5bbcb3]">{n.actor_username}</span></Link>;
   const jt = n.jelly_title ? <span className="font-semibold text-[#e8363a]"> "{n.jelly_title}"</span> : null;
   switch (n.type) {
-    case "like": return <>{u} le dio ❤️ a tu JellyRate{jt}</>;
+    case "like": return <>{u} le dio like a tu JellyRate{jt}</>;
     case "comment": return <>{u} comentó en{jt}: <span className="text-[#777] italic">"{n.comment_text}"</span></>;
-    case "rejelly": return <>{u} hizo ⚡ ReJelly{jt}</>;
+    case "rejelly": return <>{u} hizo ReJelly{jt}</>;
     case "follow": return <>{u} comenzó a seguirte</>;
     case "follow_request": return <>{u} quiere seguirte</>;
     case "follow_accepted": return <>{u} aceptó tu solicitud</>;
@@ -124,12 +124,38 @@ function notifText(n: Notification) {
   }
 }
 
-const filterTabs: { key: FilterTab; label: string; types: string[] }[] = [
-  { key: "all", label: "Todo", types: [] },
-  { key: "likes", label: "❤️", types: ["like"] },
-  { key: "comments", label: "💬", types: ["comment"] },
-  { key: "rejellies", label: "⚡", types: ["rejelly"] },
-  { key: "follows", label: "👤", types: ["follow", "follow_request", "follow_accepted"] },
+function TabIcon({ type, active }: { type: FilterTab; active: boolean }) {
+  const c = active ? "white" : "#999";
+  if (type === "all") return <span className="text-xs font-black uppercase tracking-widest">Todo</span>;
+  if (type === "likes") return (
+    <svg width="14" height="14" fill={active ? "white" : "none"} stroke={c} strokeWidth={1.8} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+    </svg>
+  );
+  if (type === "comments") return (
+    <svg width="14" height="14" fill="none" stroke={c} strokeWidth={1.8} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z" />
+    </svg>
+  );
+  if (type === "rejellies") return (
+    <svg width="14" height="14" fill={active ? "white" : "none"} stroke={c} strokeWidth={1.8} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+    </svg>
+  );
+  if (type === "follows") return (
+    <svg width="14" height="14" fill="none" stroke={c} strokeWidth={1.8} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+    </svg>
+  );
+  return null;
+}
+
+const filterTabs: { key: FilterTab; types: string[] }[] = [
+  { key: "all", types: [] },
+  { key: "likes", types: ["like"] },
+  { key: "comments", types: ["comment"] },
+  { key: "rejellies", types: ["rejelly"] },
+  { key: "follows", types: ["follow", "follow_request", "follow_accepted"] },
 ];
 
 export default function ActivityPage() {
@@ -306,8 +332,12 @@ export default function ActivityPage() {
         {/* Follow request actions — stop propagation */}
         {n.type === "follow_request" && (
           <div className="flex gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
-            <button className="px-3 py-1.5 rounded-xl bg-[#e8363a] text-[11px] font-black text-white active:opacity-80">✓</button>
-            <button className="px-3 py-1.5 rounded-xl bg-[#f0ede8] text-[11px] font-black text-[#999] active:opacity-80">✕</button>
+            <button className="w-8 h-8 rounded-xl bg-[#e8363a] flex items-center justify-center active:opacity-80">
+              <svg width="14" height="14" fill="none" stroke="white" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+            </button>
+            <button className="w-8 h-8 rounded-xl bg-[#f0ede8] flex items-center justify-center active:opacity-80">
+              <svg width="14" height="14" fill="none" stroke="#999" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
           </div>
         )}
       </div>
@@ -353,13 +383,15 @@ export default function ActivityPage() {
             <button
               key={tab.key}
               onClick={() => setActiveFilter(tab.key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wide transition-colors ${
+              className={`flex items-center justify-center px-3 py-1.5 rounded-xl transition-colors ${
+                tab.key === "all" ? "flex-1" : "w-10"
+              } ${
                 activeFilter === tab.key
                   ? "bg-[#e8363a] text-white"
                   : "bg-[#f0ede8] text-[#999]"
               }`}
             >
-              {tab.label}
+              <TabIcon type={tab.key} active={activeFilter === tab.key} />
             </button>
           ))}
         </div>
@@ -387,7 +419,9 @@ export default function ActivityPage() {
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 gap-4">
           <div className="w-16 h-16 rounded-3xl bg-white border border-[#e0dbd4] flex items-center justify-center">
-            <span className="text-2xl">🔔</span>
+            <svg width="28" height="28" fill="none" stroke="#ccc" strokeWidth={1.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+            </svg>
           </div>
           <div className="text-center">
             <p className="font-black uppercase tracking-widest text-[#2a2a2a] text-sm">Sin actividad aún</p>

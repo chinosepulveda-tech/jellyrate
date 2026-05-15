@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 type Step = "photo" | "rate" | "details" | "posting";
 type Audience = "all" | "male" | "female";
 
-const CATEGORIES = ["🍽️ Comida", "🎬 Película", "🍷 Bebida", "📍 Lugar", "🎵 Música", "📦 Producto", "📚 Libro", "✈️ Viaje", "💊 Servicio", "🎮 Juego"];
+const CATEGORIES = ["Comida", "Película", "Bebida", "Lugar", "Música", "Producto", "Libro", "Viaje", "Servicio", "Juego"];
 
 function ScoreColor(score: number) {
   if (score >= 8) return "#22c55e";
@@ -41,7 +41,6 @@ export default function CreatePage() {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [placeName, setPlaceName] = useState("");
-  const [privacy, setPrivacy] = useState<"public" | "followers">("public");
   const [audience, setAudience] = useState<Audience>("all");
   const [error, setError] = useState<string | null>(null);
 
@@ -84,7 +83,7 @@ export default function CreatePage() {
         category: category || null,
         place_name: placeName || null,
         audience,
-        privacy,
+        privacy: "public",
       });
 
       if (insertError) throw insertError;
@@ -316,27 +315,6 @@ export default function CreatePage() {
                 placeholder="Nombre del lugar o ciudad"
                 className="w-full bg-white border border-[#e0dbd4] rounded-xl px-4 py-3 text-[#2a2a2a] placeholder:text-[#ccc] focus:border-[#e8363a] transition-colors text-sm"
               />
-            </div>
-
-            {/* Privacy */}
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-black text-[#999] uppercase tracking-widest">Visibilidad</label>
-              <div className="flex gap-2">
-                {[["public", "🌍 Todos"], ["followers", "👥 Seguidores"]].map(([val, label]) => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => setPrivacy(val as "public" | "followers")}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-colors ${
-                      privacy === val
-                        ? "bg-[#e8363a] border-[#e8363a] text-white"
-                        : "bg-white border-[#e0dbd4] text-[#777]"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {error && <p className="text-sm text-[#e8363a] text-center font-semibold">{error}</p>}

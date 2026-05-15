@@ -113,7 +113,11 @@ export default function FollowersPage() {
           </div>
         ) : people.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <span className="text-4xl">👤</span>
+            <div className="w-14 h-14 rounded-2xl bg-white border border-[#e0dbd4] flex items-center justify-center">
+              <svg width="24" height="24" fill="none" stroke="#ccc" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+            </div>
             <p className="text-xs font-black uppercase tracking-widest text-[#999]">Sin seguidores aún</p>
           </div>
         ) : (
