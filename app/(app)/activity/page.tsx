@@ -265,22 +265,27 @@ export default function ActivityPage() {
   const unread = allNotifs.filter(n => !n.read).length;
 
   function renderItem(n: Notification) {
-    return (
-      <div key={n.id} className={`flex items-start gap-3 px-4 py-3.5 border-b border-[#f5f2ee] ${!n.read ? "bg-[#fff8f8]" : "bg-white"}`}>
+    // Deep link target
+    const href = n.jellyrate_id
+      ? `/jelly/${n.jellyrate_id}`
+      : ["follow", "follow_request", "follow_accepted"].includes(n.type)
+        ? `/profile/${n.actor_username}`
+        : undefined;
+
+    const inner = (
+      <div className={`flex items-center gap-3 px-4 py-3.5 border-b border-[#f5f2ee] active:bg-[#f5f2ee] transition-colors ${!n.read ? "bg-[#fff8f8]" : "bg-white"}`}>
         {/* Actor avatar */}
-        <Link href={`/profile/${n.actor_username}`}>
-          <div className="w-10 h-10 rounded-full bg-[#ece8e3] overflow-hidden flex items-center justify-center font-black text-sm text-[#aaa] flex-shrink-0">
-            {n.actor_avatar
-              ? <Image src={n.actor_avatar} alt="" width={40} height={40} className="object-cover" unoptimized />
-              : n.actor_username[0].toUpperCase()
-            }
-          </div>
-        </Link>
+        <div className="w-10 h-10 rounded-full bg-[#ece8e3] overflow-hidden flex items-center justify-center font-black text-sm text-[#aaa] flex-shrink-0">
+          {n.actor_avatar
+            ? <Image src={n.actor_avatar} alt="" width={40} height={40} className="object-cover" unoptimized />
+            : n.actor_username[0].toUpperCase()
+          }
+        </div>
 
         {/* Type icon */}
         <NotifIcon type={n.type} />
 
-        {/* Text */}
+        {/* Text + time */}
         <div className="flex-1 min-w-0">
           <p className="text-sm text-[#2a2a2a] leading-snug">{notifText(n)}</p>
           <p className="text-[11px] text-[#bbb] mt-0.5 font-semibold">{timeAgo(n.created_at)}</p>
@@ -288,20 +293,29 @@ export default function ActivityPage() {
 
         {/* Jelly thumbnail */}
         {n.jelly_photo && (
-          <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-[#f0ede8]">
+          <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-[#f0ede8] border border-[#e8e3dd]">
             <Image src={n.jelly_photo} alt="" width={44} height={44} className="object-cover" unoptimized />
           </div>
         )}
 
-        {/* Follow request actions */}
+        {/* Unread dot */}
+        {!n.read && !n.jelly_photo && (
+          <div className="w-2 h-2 rounded-full bg-[#e8363a] flex-shrink-0" />
+        )}
+
+        {/* Follow request actions — stop propagation */}
         {n.type === "follow_request" && (
-          <div className="flex gap-2 flex-shrink-0">
-            <button className="px-3 py-1.5 rounded-xl bg-[#e8363a] text-[11px] font-black text-white">✓</button>
-            <button className="px-3 py-1.5 rounded-xl bg-[#f0ede8] text-[11px] font-black text-[#999]">✕</button>
+          <div className="flex gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
+            <button className="px-3 py-1.5 rounded-xl bg-[#e8363a] text-[11px] font-black text-white active:opacity-80">✓</button>
+            <button className="px-3 py-1.5 rounded-xl bg-[#f0ede8] text-[11px] font-black text-[#999] active:opacity-80">✕</button>
           </div>
         )}
       </div>
     );
+
+    return href
+      ? <Link key={n.id} href={href}>{inner}</Link>
+      : <div key={n.id}>{inner}</div>;
   }
 
   function renderSection(label: string, items: Notification[]) {

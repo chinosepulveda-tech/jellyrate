@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import CommentsSheet from "@/components/CommentsSheet";
 import ImageViewer from "@/components/ImageViewer";
+import { useToast } from "@/components/Toast";
 import type { JellyRate } from "@/lib/types";
 
 // ── Action menu sheet ──────────────────────────────────────────────────
@@ -36,7 +37,7 @@ function ActionSheet({
     const url = `${window.location.origin}/jelly/${jelly.id}`;
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
-      setTimeout(onClose, 900);
+      setTimeout(onClose, 700);
     });
   }
 
@@ -143,6 +144,7 @@ interface Props {
 
 export default function JellyCard({ jelly, currentUserId }: Props) {
   const supabase = createClient();
+  const toast = useToast();
   const [liked, setLiked] = useState(jelly.user_liked ?? false);
   const [likes, setLikes] = useState(jelly.likes_count ?? 0);
   const [commentsCount] = useState(jelly.comments_count ?? 0);
@@ -191,6 +193,7 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
     await supabase.from("likes").insert({ user_id: currentUserId, jellyrate_id: jelly.id });
     setLikes(l => l + 1);
     setLiked(true);
+    toast.show("¡Te gustó!", "❤️", "success");
   }
 
   async function toggleLike() {
@@ -208,10 +211,13 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
     if (!currentUserId) return;
     if (saved) {
       await supabase.from("saves").delete().match({ user_id: currentUserId, jellyrate_id: jelly.id });
+      setSaved(false);
+      toast.show("Guardado eliminado", "🔖");
     } else {
       await supabase.from("saves").insert({ user_id: currentUserId, jellyrate_id: jelly.id });
+      setSaved(true);
+      toast.show("¡Guardado!", "🔖", "success");
     }
-    setSaved(!saved);
   }
 
   async function submitRejelly() {
@@ -223,6 +229,7 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
     });
     setShowRejelly(false);
     setRejellyDone(true);
+    toast.show(`ReJelly ${rejellyScore}/10 enviado`, "⚡", "success");
     setRejellies(r => r + 1);
   }
 
