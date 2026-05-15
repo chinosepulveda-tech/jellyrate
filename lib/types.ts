@@ -23,10 +23,12 @@ export interface JellyRate {
   audience: "all" | "male" | "female";
   privacy: "public" | "followers";
   created_at: string;
+  // denormalized counts (from migration 003)
+  likes_count: number;
+  comments_count: number;
+  rejellies_count: number;
   // joined
   profile?: Profile;
-  likes_count?: number;
-  rejellies_count?: number;
   user_liked?: boolean;
   user_saved?: boolean;
   friend_avg?: number | null;
@@ -43,6 +45,15 @@ export interface ReJelly {
   profile?: Profile;
 }
 
+export interface Comment {
+  id: string;
+  user_id: string;
+  jellyrate_id: string;
+  text: string;
+  created_at: string;
+  profile?: Profile;
+}
+
 export interface Like {
   user_id: string;
   jellyrate_id: string;
@@ -53,6 +64,17 @@ export interface Follow {
   follower_id: string;
   following_id: string;
   status: "pending" | "accepted";
+  created_at: string;
+}
+
+export interface Notification {
+  id: string;
+  recipient_id: string;
+  actor_id: string;
+  type: "like" | "comment" | "rejelly" | "follow" | "follow_request" | "follow_accepted";
+  jellyrate_id?: string | null;
+  comment_id?: string | null;
+  read: boolean;
   created_at: string;
 }
 
