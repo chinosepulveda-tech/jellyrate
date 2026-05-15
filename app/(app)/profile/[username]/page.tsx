@@ -185,16 +185,18 @@ export default function UserProfilePage() {
 
         {/* Stats */}
         <div className="flex gap-0 mt-4">
-          {[
-            { label: "JELLYS", value: stats.total },
-            { label: "SEGUIDORES", value: stats.followers },
-            { label: "SIGUIENDO", value: stats.following },
-          ].map((stat, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center py-2.5 border-r border-[#e8e3dd] last:border-r-0">
-              <span className="text-xl font-black text-[#e8363a]">{stat.value}</span>
-              <span className="text-[9px] font-black text-[#bbb] uppercase tracking-widest">{stat.label}</span>
-            </div>
-          ))}
+          <div className="flex-1 flex flex-col items-center py-2.5 border-r border-[#e8e3dd]">
+            <span className="text-xl font-black text-[#e8363a]">{stats.total}</span>
+            <span className="text-[9px] font-black text-[#bbb] uppercase tracking-widest">JELLYS</span>
+          </div>
+          <Link href={`/profile/${username}/followers`} className="flex-1 flex flex-col items-center py-2.5 border-r border-[#e8e3dd] active:bg-[#f5f2ee]">
+            <span className="text-xl font-black text-[#e8363a]">{stats.followers}</span>
+            <span className="text-[9px] font-black text-[#bbb] uppercase tracking-widest">SEGUIDORES</span>
+          </Link>
+          <Link href={`/profile/${username}/following`} className="flex-1 flex flex-col items-center py-2.5 active:bg-[#f5f2ee]">
+            <span className="text-xl font-black text-[#e8363a]">{stats.following}</span>
+            <span className="text-[9px] font-black text-[#bbb] uppercase tracking-widest">SIGUIENDO</span>
+          </Link>
         </div>
 
         {/* CTA buttons */}

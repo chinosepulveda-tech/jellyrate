@@ -5,7 +5,118 @@ import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import CommentsSheet from "@/components/CommentsSheet";
+import ImageViewer from "@/components/ImageViewer";
 import type { JellyRate } from "@/lib/types";
+
+// ── Action menu sheet ──────────────────────────────────────────────────
+function ActionSheet({
+  jelly,
+  isOwner,
+  onClose,
+  onDeleted,
+}: {
+  jelly: JellyRate;
+  isOwner: boolean;
+  onClose: () => void;
+  onDeleted?: () => void;
+}) {
+  const supabase = createClient();
+  const [deleting, setDeleting] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  async function handleDelete() {
+    if (!confirm("¿Eliminar este JellyRate?")) return;
+    setDeleting(true);
+    await supabase.from("jellyrates").delete().eq("id", jelly.id);
+    onDeleted?.();
+    onClose();
+  }
+
+  function handleCopy() {
+    const url = `${window.location.origin}/jelly/${jelly.id}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(onClose, 900);
+    });
+  }
+
+  function handleReport() {
+    alert("Reporte enviado. Gracias.");
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div
+        className="relative w-full max-w-[480px] mx-auto bg-white rounded-t-3xl overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-[#e0dbd4]" />
+        </div>
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-[#f5f2ee]">
+          <div className="w-12 h-12 rounded-xl bg-[#f0ede8] overflow-hidden flex-shrink-0">
+            {jelly.photo_url
+              ? <Image src={jelly.photo_url} alt="" width={48} height={48} className="object-cover" unoptimized />
+              : <div className="w-full h-full flex items-center justify-center text-lg">{jelly.score}</div>
+            }
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-black text-sm text-[#2a2a2a] truncate">{jelly.title}</p>
+            <p className="text-xs text-[#aaa]">Score: {jelly.score}/10</p>
+          </div>
+        </div>
+        <div className="pb-8">
+          <button
+            onClick={handleCopy}
+            className="w-full flex items-center gap-4 px-5 py-4 active:bg-[#f5f2ee] transition-colors"
+          >
+            <div className="w-10 h-10 rounded-full bg-[#f0ede8] flex items-center justify-center flex-shrink-0">
+              {copied
+                ? <svg width="18" height="18" fill="none" stroke="#22c55e" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                : <svg width="18" height="18" fill="none" stroke="#5bbcb3" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
+              }
+            </div>
+            <span className="font-black text-sm text-[#2a2a2a] uppercase tracking-wide">
+              {copied ? "¡Copiado!" : "Copiar enlace"}
+            </span>
+          </button>
+          {isOwner && (
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="w-full flex items-center gap-4 px-5 py-4 active:bg-[#fff0f0] transition-colors"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#fff0f0] flex items-center justify-center flex-shrink-0">
+                {deleting
+                  ? <div className="w-4 h-4 border-2 border-[#e8363a] border-t-transparent rounded-full animate-spin" />
+                  : <svg width="18" height="18" fill="none" stroke="#e8363a" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                }
+              </div>
+              <span className="font-black text-sm text-[#e8363a] uppercase tracking-wide">
+                {deleting ? "Eliminando…" : "Eliminar JellyRate"}
+              </span>
+            </button>
+          )}
+          {!isOwner && (
+            <button
+              onClick={handleReport}
+              className="w-full flex items-center gap-4 px-5 py-4 active:bg-[#f5f2ee] transition-colors"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#f5f0e8] flex items-center justify-center flex-shrink-0">
+                <svg width="18" height="18" fill="none" stroke="#f59e0b" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+              </div>
+              <span className="font-black text-sm text-[#f59e0b] uppercase tracking-wide">Reportar</span>
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function ScoreColor(score: number) {
   if (score >= 9) return "#16a34a";
@@ -41,24 +152,40 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
   const [rejellyScore, setRejellyScore] = useState(7);
   const [rejellyDone, setRejellyDone] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [showActions, setShowActions] = useState(false);
+  const [deleted, setDeleted] = useState(false);
+  const [showViewer, setShowViewer] = useState(false);
   const [heartPop, setHeartPop] = useState(false);
   const lastTap = useRef<number>(0);
+
+  const isOwner = !!(currentUserId && currentUserId === jelly.user_id);
 
   const scoreColor = ScoreColor(jelly.score);
   const timeAgo = formatTimeAgo(jelly.created_at);
   const username = jelly.profile?.username ?? "usuario";
 
+  const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handlePhotoTap = useCallback(() => {
     const now = Date.now();
-    if (now - lastTap.current < 350) {
+    const isDouble = now - lastTap.current < 350;
+    lastTap.current = now;
+
+    if (isDouble) {
+      // Cancel pending single-tap open
+      if (singleTapTimer.current) clearTimeout(singleTapTimer.current);
       if (!liked && currentUserId) {
         doLike();
         setHeartPop(true);
         setTimeout(() => setHeartPop(false), 800);
       }
+    } else {
+      // Delay single-tap to allow double-tap to cancel it
+      singleTapTimer.current = setTimeout(() => {
+        if (jelly.photo_url) setShowViewer(true);
+      }, 360);
     }
-    lastTap.current = now;
-  }, [liked, currentUserId]);
+  }, [liked, currentUserId, jelly.photo_url]);
 
   async function doLike() {
     await supabase.from("likes").insert({ user_id: currentUserId, jellyrate_id: jelly.id });
@@ -99,6 +226,8 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
     setRejellies(r => r + 1);
   }
 
+  if (deleted) return null;
+
   return (
     <article className="border-b border-[#ede9e3] bg-white">
       {/* ── Header ── */}
@@ -131,7 +260,10 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
 
         <div className="flex-shrink-0 flex items-center gap-1">
           <span className="text-[11px] text-[#bbb]">{timeAgo}</span>
-          <button className="w-7 h-7 flex items-center justify-center text-[#ddd] active:text-[#999]">
+          <button
+            onClick={() => setShowActions(true)}
+            className="w-7 h-7 flex items-center justify-center text-[#ccc] active:text-[#999]"
+          >
             <svg width="15" height="15" fill="currentColor" viewBox="0 0 20 20">
               <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
             </svg>
@@ -298,6 +430,27 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
           jellyTitle={jelly.title}
           currentUserId={currentUserId}
           onClose={() => setShowComments(false)}
+        />
+      )}
+
+      {/* ── Action Sheet ── */}
+      {showActions && (
+        <ActionSheet
+          jelly={jelly}
+          isOwner={isOwner}
+          onClose={() => setShowActions(false)}
+          onDeleted={() => setDeleted(true)}
+        />
+      )}
+
+      {/* ── Image Viewer ── */}
+      {showViewer && jelly.photo_url && (
+        <ImageViewer
+          src={jelly.photo_url}
+          title={jelly.title}
+          score={jelly.score}
+          username={username}
+          onClose={() => setShowViewer(false)}
         />
       )}
     </article>

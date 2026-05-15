@@ -180,16 +180,18 @@ export default function ProfilePage() {
 
         {/* Stats */}
         <div className="flex gap-0 mt-4">
-          {[
-            { label: "JELLYS", value: stats.total },
-            { label: "SEGUIDORES", value: stats.followers },
-            { label: "SIGUIENDO", value: stats.following },
-          ].map((stat, i) => (
-            <button key={i} className="flex-1 flex flex-col items-center py-2.5 border-r border-[#e8e3dd] last:border-r-0 active:bg-[#fafaf9] transition-colors">
-              <span className="text-xl font-black text-[#e8363a]">{stat.value}</span>
-              <span className="text-[9px] font-black text-[#bbb] uppercase tracking-widest">{stat.label}</span>
-            </button>
-          ))}
+          <div className="flex-1 flex flex-col items-center py-2.5 border-r border-[#e8e3dd]">
+            <span className="text-xl font-black text-[#e8363a]">{stats.total}</span>
+            <span className="text-[9px] font-black text-[#bbb] uppercase tracking-widest">JELLYS</span>
+          </div>
+          <Link href={username ? `/profile/${username}/followers` : "#"} className="flex-1 flex flex-col items-center py-2.5 border-r border-[#e8e3dd] active:bg-[#fafaf9] transition-colors">
+            <span className="text-xl font-black text-[#e8363a]">{stats.followers}</span>
+            <span className="text-[9px] font-black text-[#bbb] uppercase tracking-widest">SEGUIDORES</span>
+          </Link>
+          <Link href={username ? `/profile/${username}/following` : "#"} className="flex-1 flex flex-col items-center py-2.5 active:bg-[#fafaf9] transition-colors">
+            <span className="text-xl font-black text-[#e8363a]">{stats.following}</span>
+            <span className="text-[9px] font-black text-[#bbb] uppercase tracking-widest">SIGUIENDO</span>
+          </Link>
         </div>
 
         {/* Edit button */}
