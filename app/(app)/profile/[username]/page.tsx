@@ -111,14 +111,26 @@ export default function UserProfilePage() {
   async function toggleFollow() {
     if (!currentUserId || !profile || isSelf || followLoading) return;
     setFollowLoading(true);
+
     if (isFollowing) {
-      await supabase.from("follows").delete().match({ follower_id: currentUserId, following_id: profile.id });
-      setStats(s => ({ ...s, followers: Math.max(0, s.followers - 1) }));
+      const { error } = await supabase
+        .from("follows").delete()
+        .match({ follower_id: currentUserId, following_id: profile.id });
+      if (!error) {
+        setIsFollowing(false);
+        setStats(s => ({ ...s, followers: Math.max(0, s.followers - 1) }));
+      }
     } else {
-      await supabase.from("follows").insert({ follower_id: currentUserId, following_id: profile.id, status: "accepted" });
-      setStats(s => ({ ...s, followers: s.followers + 1 }));
+      const { error } = await supabase
+        .from("follows")
+        .upsert({ follower_id: currentUserId, following_id: profile.id, status: "accepted" },
+          { onConflict: "follower_id,following_id" });
+      if (!error) {
+        setIsFollowing(true);
+        setStats(s => ({ ...s, followers: s.followers + 1 }));
+      }
     }
-    setIsFollowing(!isFollowing);
+
     setFollowLoading(false);
   }
 

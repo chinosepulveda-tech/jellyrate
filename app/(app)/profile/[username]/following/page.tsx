@@ -70,11 +70,15 @@ export default function FollowingPage() {
   async function toggleFollow(person: Person) {
     if (!currentUserId) return;
     if (person.isFollowing) {
-      await supabase.from("follows").delete().match({ follower_id: currentUserId, following_id: person.id });
+      const { error } = await supabase.from("follows").delete()
+        .match({ follower_id: currentUserId, following_id: person.id });
+      if (!error) setPeople(prev => prev.map(p => p.id === person.id ? { ...p, isFollowing: false } : p));
     } else {
-      await supabase.from("follows").insert({ follower_id: currentUserId, following_id: person.id, status: "accepted" });
+      const { error } = await supabase.from("follows")
+        .upsert({ follower_id: currentUserId, following_id: person.id, status: "accepted" },
+          { onConflict: "follower_id,following_id" });
+      if (!error) setPeople(prev => prev.map(p => p.id === person.id ? { ...p, isFollowing: true } : p));
     }
-    setPeople(prev => prev.map(p => p.id === person.id ? { ...p, isFollowing: !p.isFollowing } : p));
   }
 
   return (
