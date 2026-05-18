@@ -542,7 +542,48 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
 
   const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Pinch-to-zoom ─────────────────────────────────────────────────────
+  const [imgScale, setImgScale] = useState(1);
+  const pinchRef = useRef<{
+    initialDist: number;
+    initialScale: number;
+    isPinching: boolean;
+  } | null>(null);
+
+  function getTouchDist(touches: React.TouchList) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function handlePinchStart(e: React.TouchEvent) {
+    if (e.touches.length !== 2) return;
+    e.stopPropagation();
+    pinchRef.current = {
+      initialDist: getTouchDist(e.touches),
+      initialScale: imgScale,
+      isPinching: true,
+    };
+  }
+
+  function handlePinchMove(e: React.TouchEvent) {
+    if (!pinchRef.current?.isPinching || e.touches.length !== 2) return;
+    e.stopPropagation();
+    const ratio = getTouchDist(e.touches) / pinchRef.current.initialDist;
+    const next = Math.min(4, Math.max(1, pinchRef.current.initialScale * ratio));
+    setImgScale(next);
+  }
+
+  function handlePinchEnd() {
+    if (!pinchRef.current) return;
+    pinchRef.current = null;
+    // Snap back to 1 if nearly there
+    setImgScale(s => (s < 1.08 ? 1 : s));
+  }
+
   const handlePhotoTap = useCallback(() => {
+    // Don't open viewer while zoomed
+    if (imgScale > 1.05) return;
     const now = Date.now();
     const isDouble = now - lastTap.current < 350;
     lastTap.current = now;
@@ -561,7 +602,7 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
         if (jelly.photo_url) setShowViewer(true);
       }, 360);
     }
-  }, [liked, currentUserId, jelly.photo_url]);
+  }, [liked, currentUserId, jelly.photo_url, imgScale]);
 
   async function doLike() {
     await supabase.from("likes").insert({ user_id: currentUserId, jellyrate_id: jelly.id });
@@ -683,6 +724,10 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
       <div
         className="relative bg-[#f0ede8] select-none overflow-hidden"
         onClick={handlePhotoTap}
+        onTouchStart={handlePinchStart}
+        onTouchMove={handlePinchMove}
+        onTouchEnd={handlePinchEnd}
+        onTouchCancel={handlePinchEnd}
       >
         {jelly.photo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -690,7 +735,13 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
             src={jelly.photo_url}
             alt={jelly.title}
             className="w-full h-auto block"
-            style={{ maxHeight: "85vh" }}
+            style={{
+              maxHeight: "85vh",
+              transform: `scale(${imgScale})`,
+              transformOrigin: "center center",
+              transition: imgScale === 1 ? "transform 0.2s ease" : "none",
+              willChange: "transform",
+            }}
           />
         ) : (
           <div className="aspect-square flex items-center justify-center">
