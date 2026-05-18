@@ -83,6 +83,28 @@ export interface Notification {
   created_at: string;
 }
 
+export interface Message {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  text: string | null;
+  jellyrate_id: string | null;
+  created_at: string;
+  // joined
+  sender?: Profile;
+  jellyrate?: Pick<JellyRate, "id" | "photo_url" | "title" | "score">;
+}
+
+export interface Conversation {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  // joined: the other participant
+  other?: Profile;
+  // last message preview
+  last_message?: Pick<Message, "text" | "jellyrate_id" | "sender_id" | "created_at">;
+}
+
 export interface NotificationSettings {
   user_id: string;
   likes_jellyrate: boolean;

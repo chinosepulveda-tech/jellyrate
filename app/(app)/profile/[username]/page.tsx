@@ -134,6 +134,21 @@ export default function UserProfilePage() {
     setFollowLoading(false);
   }
 
+  async function startDM() {
+    if (!currentUserId || !profile) return;
+
+    const { data, error } = await supabase.rpc("create_or_get_dm", {
+      target_user_id: profile.id,
+    });
+
+    if (error || !data) {
+      console.error("startDM error", error);
+      return;
+    }
+
+    router.push(`/messages/${data}`);
+  }
+
   if (loading) {
     return (
       <div className="animate-pulse bg-[#f2f1ed] min-h-screen">
@@ -218,7 +233,10 @@ export default function UserProfilePage() {
                   {followLoading ? "..." : isFollowing ? "✓ Siguiendo" : "Seguir"}
                 </button>
                 {isFollowing && (
-                  <button className="px-4 py-2.5 rounded-2xl border border-[#e0dbd4] text-xs font-black text-[#4a4a4a] bg-white uppercase tracking-wide">
+                  <button
+                    onClick={startDM}
+                    className="px-4 py-2.5 rounded-2xl border border-[#e0dbd4] text-xs font-black text-[#4a4a4a] bg-white uppercase tracking-wide active:bg-[#f5f2ee]"
+                  >
                     Mensaje
                   </button>
                 )}
