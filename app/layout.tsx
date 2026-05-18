@@ -11,6 +11,17 @@ export const metadata: Metadata = {
   title: "JellyRate",
   description: "Rate anything. Trust your people.",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "JellyRate",
+  },
+  icons: {
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "1024x1024" },
+      { url: "/apple-touch-icon-180.png", sizes: "180x180" },
+    ],
+  },
 };
 
 export const viewport: Viewport = {
