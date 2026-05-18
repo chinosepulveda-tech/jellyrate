@@ -58,8 +58,8 @@ export default function UserProfilePage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { session } } = await supabase.auth.getSession();
-      const currentId = session?.user?.id ?? null;
+      const { data: { user: _authUser } } = await supabase.auth.getUser();
+      const currentId = _authUser?.id ?? null;
       setCurrentUserId(currentId);
 
       const { data: profileData } = await supabase

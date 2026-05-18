@@ -63,14 +63,14 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-      setUserId(session.user.id);
+      const { data: { user: _authUser } } = await supabase.auth.getUser();
+      if (!_authUser) return;
+      setUserId(_authUser?.id);
 
       const { data } = await supabase
         .from("notification_settings")
         .select("*")
-        .eq("user_id", session.user.id)
+        .eq("user_id", _authUser?.id)
         .single();
 
       if (data) {

@@ -16,8 +16,8 @@ export default function JellyDetailPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { session } } = await supabase.auth.getSession();
-      const uid = session?.user?.id;
+      const { data: { user: _authUser } } = await supabase.auth.getUser();
+      const uid = _authUser?.id;
       setUserId(uid);
 
       const { data } = await supabase

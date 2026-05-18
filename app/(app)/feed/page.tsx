@@ -29,9 +29,8 @@ export default function FeedPage() {
 
   useEffect(() => {
     async function init() {
-      const { data: { session } } = await supabase.auth.getSession();
-      const uid = session?.user?.id;
-      setUserId(uid);
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id);
     }
     init();
   }, []);

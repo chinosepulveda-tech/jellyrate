@@ -54,8 +54,8 @@ export default function ProfilePage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
+      const { data: { user: _authUser } } = await supabase.auth.getUser();
+      const user = _authUser;
       if (!user) { router.push("/login"); return; }
       setUserId(user.id);
 

@@ -56,8 +56,8 @@ export default function ExplorePage() {
 
   useEffect(() => {
     async function init() {
-      const { data: { session } } = await supabase.auth.getSession();
-      setCurrentUserId(session?.user?.id ?? null);
+      const { data: { user: _authUser } } = await supabase.auth.getUser();
+      setCurrentUserId(_authUser?.id ?? null);
       loadPosts("Hot", "");
     }
     init();

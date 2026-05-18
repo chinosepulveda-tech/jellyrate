@@ -56,14 +56,14 @@ export default function PrivacyPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-      setUserId(session.user.id);
+      const { data: { user: _authUser } } = await supabase.auth.getUser();
+      if (!_authUser) return;
+      setUserId(_authUser?.id);
 
       const { data } = await supabase
         .from("profiles")
         .select("is_private, is_private_activity")
-        .eq("id", session.user.id)
+        .eq("id", _authUser?.id)
         .single();
 
       if (data) {

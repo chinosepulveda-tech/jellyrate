@@ -38,6 +38,7 @@ export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, cano
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -82,13 +83,17 @@ export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, cano
   async function submitComment() {
     if (!currentUserId || !text.trim()) return;
     setSubmitting(true);
+    setSubmitError(null);
     const { data, error } = await supabase
       .from("comments")
       .insert({ user_id: currentUserId, jellyrate_id: rootId, text: text.trim() })
       .select("id, user_id, text, created_at")
       .single();
 
-    if (!error && data) {
+    if (error) {
+      setSubmitError("No se pudo enviar. Intenta de nuevo.");
+      console.error("Comment insert error:", error);
+    } else if (data) {
       const { data: profile } = await supabase
         .from("profiles").select("username, avatar_url").eq("id", currentUserId).single();
       setComments(prev => [...prev, { ...data, profile: profile ?? undefined }]);
@@ -180,6 +185,13 @@ export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, cano
             ))
           )}
         </div>
+
+        {/* Submit error */}
+        {submitError && (
+          <div className="px-4 py-2 bg-[#fef2f2] border-t border-[#fee2e2] flex-shrink-0">
+            <p className="text-xs text-[#e8363a] font-semibold">{submitError}</p>
+          </div>
+        )}
 
         {/* Input */}
         <div className="flex items-center gap-3 px-4 py-3 border-t border-[#f0ede8] flex-shrink-0 pb-safe"

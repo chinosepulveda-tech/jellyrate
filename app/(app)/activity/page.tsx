@@ -167,8 +167,8 @@ export default function ActivityPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { session } } = await supabase.auth.getSession();
-      const uid = session?.user?.id;
+      const { data: { user: _authUser } } = await supabase.auth.getUser();
+      const uid = _authUser?.id;
       if (!uid) return;
       setUserId(uid);
 

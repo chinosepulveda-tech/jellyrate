@@ -36,14 +36,14 @@ export default function FindFriendsPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-      setUserId(session.user.id);
+      const { data: { user: _authUser } } = await supabase.auth.getUser();
+      if (!_authUser) return;
+      setUserId(_authUser?.id);
 
       const { data: followData } = await supabase
         .from("follows")
         .select("following_id")
-        .eq("follower_id", session.user.id);
+        .eq("follower_id", _authUser?.id);
 
       setFollowingIds(new Set(followData?.map(f => f.following_id) ?? []));
 
@@ -51,7 +51,7 @@ export default function FindFriendsPage() {
       const { data } = await supabase
         .from("profiles")
         .select("id, username, full_name, avatar_url")
-        .neq("id", session.user.id)
+        .neq("id", _authUser?.id)
         .limit(20);
 
       setResults(data ?? []);
