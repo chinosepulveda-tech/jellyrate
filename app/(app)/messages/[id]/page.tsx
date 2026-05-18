@@ -110,7 +110,21 @@ export default function ChatPage() {
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true });
 
-    if (!error) setMessages((data ?? []) as any);
+    if (error) { setLoading(false); return; }
+    const msgs = (data ?? []) as Message[];
+
+    // Fetch JellyRate data for any shared JellyRates
+    const jrIds = [...new Set(msgs.map(m => m.jellyrate_id).filter(Boolean))] as string[];
+    if (jrIds.length > 0) {
+      const { data: jrs } = await supabase
+        .from("jellyrates")
+        .select("id, photo_url, title, score")
+        .in("id", jrIds);
+      const jrMap = Object.fromEntries((jrs ?? []).map((j: any) => [j.id, j]));
+      setMessages(msgs.map(m => m.jellyrate_id ? { ...m, jellyrate: jrMap[m.jellyrate_id] } : m));
+    } else {
+      setMessages(msgs);
+    }
     setLoading(false);
   }, [supabase, conversationId]);
 
@@ -149,12 +163,21 @@ export default function ChatPage() {
           filter: `conversation_id=eq.${conversationId}`,
         },
         async (payload) => {
-          const newMsg = payload.new as Message;
+          let newMsg = payload.new as Message;
+
+          // If it carries a jellyrate, fetch it
+          if (newMsg.jellyrate_id) {
+            const { data: jr } = await supabase
+              .from("jellyrates")
+              .select("id, photo_url, title, score")
+              .eq("id", newMsg.jellyrate_id)
+              .single();
+            if (jr) newMsg = { ...newMsg, jellyrate: jr as any };
+          }
+
           setMessages((prev) => {
-            // Replace optimistic temp message (same sender + approx time) or add new
             const exists = prev.some((m) => m.id === newMsg.id);
             if (exists) return prev;
-            // If it's my own message, replace the temp optimistic entry
             const tempIdx = prev.findIndex(
               (m) => m.id.startsWith("temp-") && m.sender_id === newMsg.sender_id
             );
