@@ -104,17 +104,13 @@ export default function ChatPage() {
 
   // ── load messages ──────────────────────────────────────────────────────────
   const loadMessages = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("messages")
-      .select(`
-        id, conversation_id, sender_id, text, jellyrate_id, created_at,
-        sender:profiles!sender_id(id, username, full_name, avatar_url),
-        jellyrate:jellyrates!jellyrate_id(id, photo_url, title, score)
-      `)
+      .select("id, conversation_id, sender_id, text, jellyrate_id, created_at")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true });
 
-    if (data) setMessages(data as any);
+    if (!error) setMessages((data ?? []) as any);
     setLoading(false);
   }, [supabase, conversationId]);
 
@@ -153,24 +149,23 @@ export default function ChatPage() {
           filter: `conversation_id=eq.${conversationId}`,
         },
         async (payload) => {
-          // If sent by me we already optimistically added it; fetch the full enriched row
-          const { data } = await supabase
-            .from("messages")
-            .select(`
-              id, conversation_id, sender_id, text, jellyrate_id, created_at,
-              sender:profiles!sender_id(id, username, full_name, avatar_url),
-              jellyrate:jellyrates!jellyrate_id(id, photo_url, title, score)
-            `)
-            .eq("id", payload.new.id)
-            .single();
-          if (data) {
-            setMessages((prev) => {
-              // avoid duplicate if optimistic insert already present
-              if (prev.some((m) => m.id === (data as any).id)) return prev;
-              return [...prev, data as any];
-            });
-            scrollToBottom();
-          }
+          const newMsg = payload.new as Message;
+          setMessages((prev) => {
+            // Replace optimistic temp message (same sender + approx time) or add new
+            const exists = prev.some((m) => m.id === newMsg.id);
+            if (exists) return prev;
+            // If it's my own message, replace the temp optimistic entry
+            const tempIdx = prev.findIndex(
+              (m) => m.id.startsWith("temp-") && m.sender_id === newMsg.sender_id
+            );
+            if (tempIdx !== -1) {
+              const next = [...prev];
+              next[tempIdx] = newMsg;
+              return next;
+            }
+            return [...prev, newMsg];
+          });
+          scrollToBottom();
         }
       )
       .subscribe();
@@ -202,7 +197,7 @@ export default function ChatPage() {
     const { data, error } = await supabase
       .from("messages")
       .insert({ conversation_id: conversationId, sender_id: myId, text: trimmed })
-      .select("id")
+      .select("id, conversation_id, sender_id, text, jellyrate_id, created_at")
       .single();
 
     if (error || !data) {
@@ -210,9 +205,9 @@ export default function ChatPage() {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setText(trimmed);
     } else {
-      // Replace temp with real id (realtime will enrich it)
+      // Replace temp with the real persisted message
       setMessages((prev) =>
-        prev.map((m) => m.id === tempId ? { ...m, id: data.id } : m)
+        prev.map((m) => m.id === tempId ? (data as Message) : m)
       );
     }
 
