@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import imageCompression from "browser-image-compression";
 import { createClient } from "@/lib/supabase/client";
 
 type Step = "photo" | "rate" | "details" | "posting";
@@ -109,11 +110,22 @@ export default function CreatePage() {
     setShowSuggestions(false);
   }
 
-  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setPhotoFile(file);
-    setPhotoPreview(URL.createObjectURL(file));
+    try {
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      });
+      setPhotoFile(compressed);
+      setPhotoPreview(URL.createObjectURL(compressed));
+    } catch {
+      // If compression fails, use original
+      setPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
     setStep("rate");
   }
 
