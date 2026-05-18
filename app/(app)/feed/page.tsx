@@ -154,38 +154,43 @@ export default function FeedPage() {
         });
       });
 
-      // 2. Rejellies on any of those canonical jellyrates from myCircle
-      const canonicalJellyIds = Object.keys(jellyIdToCanonical);
-      if (canonicalJellyIds.length > 0) {
-        const { data: circleRejellies } = await supabase
-          .from("rejellies")
-          .select("user_id, score, jellyrate_id")
-          .in("jellyrate_id", canonicalJellyIds)
-          .in("user_id", myCircle);
+    }
 
-        // Fetch profiles for rejellyiers not yet in profileMap
-        const rejExtraIds = [...new Set(
-          (circleRejellies ?? []).map((r: any) => r.user_id).filter((id: string) => !profileMap[id])
-        )];
-        if (rejExtraIds.length > 0) {
-          const { data: rp } = await supabase
-            .from("profiles").select("id, username, avatar_url").in("id", rejExtraIds);
-          (rp ?? []).forEach((p: any) => { profileMap[p.id] = p; });
-        }
+    // Rejellies for ALL posts on this page from myCircle.
+    // Runs outside the canonical block so posts with canonical_id=null
+    // (e.g. Murakami with a rejelly from Pablo) are also covered.
+    {
+      const { data: circleRejellies } = await supabase
+        .from("rejellies")
+        .select("user_id, score, jellyrate_id")
+        .in("jellyrate_id", jellyIds)
+        .in("user_id", myCircle);
 
-        (circleRejellies ?? []).forEach((r: any) => {
-          const canonicalId = jellyIdToCanonical[r.jellyrate_id];
-          if (!canonicalId) return;
-          // Count each user once — skip if they already have an independent jellyrate
-          if (canonicalScoresMap[canonicalId]?.some((s) => s.user_id === r.user_id)) return;
-          canonicalScoresMap[canonicalId].push({
-            user_id: r.user_id,
-            username: profileMap[r.user_id]?.username ?? "usuario",
-            avatar_url: profileMap[r.user_id]?.avatar_url ?? null,
-            score: r.score,
-          });
-        });
+      // Fetch profiles for rejellyiers not yet in profileMap
+      const rejExtraIds = [...new Set(
+        (circleRejellies ?? []).map((r: any) => r.user_id).filter((id: string) => !profileMap[id])
+      )];
+      if (rejExtraIds.length > 0) {
+        const { data: rp } = await supabase
+          .from("profiles").select("id, username, avatar_url").in("id", rejExtraIds);
+        (rp ?? []).forEach((p: any) => { profileMap[p.id] = p; });
       }
+
+      (circleRejellies ?? []).forEach((r: any) => {
+        // Find the parent post to resolve its canonical key
+        const parent = data.find((j: any) => j.id === r.jellyrate_id);
+        if (!parent) return;
+        const key: string = parent.canonical_id ?? parent.id;
+        if (!canonicalScoresMap[key]) canonicalScoresMap[key] = [];
+        // Count each user once — skip if they already have an independent jellyrate
+        if (canonicalScoresMap[key].some((s: CircleRating) => s.user_id === r.user_id)) return;
+        canonicalScoresMap[key].push({
+          user_id: r.user_id,
+          username: profileMap[r.user_id]?.username ?? "usuario",
+          avatar_url: profileMap[r.user_id]?.avatar_url ?? null,
+          score: r.score,
+        });
+      });
     }
 
     // Title-based grouping for posts already on this page:
