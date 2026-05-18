@@ -498,6 +498,7 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
           jellyId={jelly.id}
           jellyTitle={jelly.title}
           currentUserId={currentUserId}
+          canonicalId={jelly.canonical_id}
           onClose={() => setShowComments(false)}
         />
       )}

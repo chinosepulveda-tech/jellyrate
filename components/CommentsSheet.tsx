@@ -16,6 +16,7 @@ interface Props {
   jellyId: string;
   jellyTitle: string;
   currentUserId?: string;
+  canonicalId?: string | null;
   onClose: () => void;
 }
 
@@ -29,7 +30,9 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(hrs / 24)}d`;
 }
 
-export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, onClose }: Props) {
+export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, canonicalId, onClose }: Props) {
+  // The "root" ID for this canonical group — comments are always saved/read here
+  const rootId = canonicalId ?? jellyId;
   const supabase = createClient();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,10 +50,17 @@ export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, onCl
   }, [jellyId]);
 
   async function loadComments() {
+    // Fetch all post IDs in this canonical group (root + all linked posts)
+    const { data: groupPosts } = await supabase
+      .from("jellyrates")
+      .select("id")
+      .or(`id.eq.${rootId},canonical_id.eq.${rootId}`);
+    const groupIds = groupPosts?.map((p: any) => p.id) ?? [rootId];
+
     const { data } = await supabase
       .from("comments")
       .select("id, user_id, text, created_at")
-      .eq("jellyrate_id", jellyId)
+      .in("jellyrate_id", groupIds)
       .order("created_at", { ascending: true })
       .limit(100);
 
@@ -74,7 +84,7 @@ export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, onCl
     setSubmitting(true);
     const { data, error } = await supabase
       .from("comments")
-      .insert({ user_id: currentUserId, jellyrate_id: jellyId, text: text.trim() })
+      .insert({ user_id: currentUserId, jellyrate_id: rootId, text: text.trim() })
       .select("id, user_id, text, created_at")
       .single();
 
