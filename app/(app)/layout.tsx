@@ -1,9 +1,18 @@
+"use client";
+
 import BottomNav from "@/components/BottomNav";
 import { ToastProvider } from "@/components/Toast";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
+
+function PushRegistrar() {
+  usePushNotifications();
+  return null;
+}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
+      <PushRegistrar />
       <div className="max-w-[480px] mx-auto min-h-dvh bg-[#f2f1ed] relative">
         <main style={{ paddingBottom: "calc(72px + env(safe-area-inset-bottom))" }}>
           {children}
