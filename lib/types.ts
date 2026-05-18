@@ -36,6 +36,8 @@ export interface JellyRate {
   profile?: Profile;
   user_liked?: boolean;
   user_saved?: boolean;
+  // friend ratings (people I follow who rated this item)
+  friendRatings?: Array<{ username: string; avatar_url: string | null; score: number }>;
 }
 
 export interface ReJelly {

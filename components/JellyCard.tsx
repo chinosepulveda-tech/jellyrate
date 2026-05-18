@@ -419,6 +419,39 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
         {jelly.category && <CategoryBadge category={jelly.category} />}
       </div>
 
+      {/* ── Friend ratings strip ── */}
+      {(jelly.friendRatings?.length ?? 0) > 0 && (
+        <div className="px-4 py-2 bg-[#eaf8f7] border-t border-[#c8eceb] flex items-center gap-2">
+          <svg width="13" height="13" fill="none" stroke="#5bbcb3" strokeWidth={2} viewBox="0 0 24 24" className="flex-shrink-0">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+          </svg>
+          <div className="flex items-center gap-2.5 flex-1 min-w-0 overflow-x-auto scrollbar-none">
+            {(jelly.friendRatings ?? []).slice(0, 4).map((f, i) => (
+              <div key={i} className="flex items-center gap-1 flex-shrink-0">
+                <div className="w-5 h-5 rounded-full bg-[#5bbcb3] overflow-hidden flex items-center justify-center text-[9px] font-black text-white flex-shrink-0">
+                  {f.avatar_url
+                    ? <Image src={f.avatar_url} alt="" width={20} height={20} className="object-cover" unoptimized />
+                    : f.username[0].toUpperCase()
+                  }
+                </div>
+                <span className="text-[10px] font-black text-[#3fa49b] truncate max-w-[60px]">{f.username}</span>
+                <span
+                  className="text-[9px] font-black text-white px-1 py-px rounded-md flex-shrink-0"
+                  style={{ backgroundColor: ScoreColor(f.score) }}
+                >
+                  {f.score}
+                </span>
+              </div>
+            ))}
+            {(jelly.friendRatings?.length ?? 0) > 4 && (
+              <span className="text-[10px] text-[#5bbcb3] font-bold flex-shrink-0">
+                +{(jelly.friendRatings?.length ?? 0) - 4}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Caption ── */}
       {jelly.description && (
         <div className="px-4 py-2.5 bg-white border-t border-[#f5f2ee]">

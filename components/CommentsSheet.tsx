@@ -54,6 +54,7 @@ export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, cano
   const supabase = createClient();
   const [authorNotes, setAuthorNotes] = useState<AuthorNote[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [followingSet, setFollowingSet] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -93,6 +94,16 @@ export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, cano
   }, [jellyId]);
 
   async function loadComments() {
+    // Fetch following IDs for the current user (to separate "Tu red" section)
+    if (currentUserId) {
+      const { data: followData } = await supabase
+        .from("follows")
+        .select("following_id")
+        .eq("follower_id", currentUserId)
+        .eq("status", "accepted");
+      setFollowingSet(new Set((followData ?? []).map((f: any) => f.following_id)));
+    }
+
     // Fetch all posts in canonical group
     const { data: groupPosts } = await supabase
       .from("jellyrates")
@@ -238,93 +249,135 @@ export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, cano
             </div>
           ) : (
             <>
-              {/* Ratings — author notes + rejellies */}
-              {authorNotes.map((note) => (
-                <div key={note.id} className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-full bg-[#f0ede8] overflow-hidden flex items-center justify-center font-black text-sm text-[#bbb] flex-shrink-0">
-                    {note.profile?.avatar_url ? (
-                      <Image src={note.profile.avatar_url} alt="" width={36} height={36} className="object-cover" />
-                    ) : (
-                      (note.profile?.username?.[0] ?? "?").toUpperCase()
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-black text-[#5bbcb3] uppercase tracking-wide">
-                        {note.profile?.username ?? "usuario"}
-                      </span>
-                      {/* Score chip */}
-                      <span
-                        className="text-[10px] font-black text-white px-1.5 py-0.5 rounded-md"
-                        style={{ backgroundColor: ScoreColor(note.score) }}
-                      >
-                        {note.score}/10
-                      </span>
-                      {note.isRejelly && (
-                        <span className="text-[9px] font-bold text-[#f59e0b] uppercase tracking-wide">rejelly</span>
+              {(() => {
+                // Split notes: friends (people I follow + myself) vs everyone else
+                const isFriend = (uid: string) =>
+                  uid === currentUserId || followingSet.has(uid);
+                const friendNotes = authorNotes.filter(n => isFriend(n.user_id));
+                const otherNotes  = authorNotes.filter(n => !isFriend(n.user_id));
+                const friendComments = comments.filter(c => isFriend(c.user_id));
+                const otherComments  = comments.filter(c => !isFriend(c.user_id));
+                const hasFriendContent = friendNotes.length > 0 || friendComments.length > 0;
+                const hasOtherContent  = otherNotes.length > 0 || otherComments.length > 0;
+                const hasSections = hasFriendContent && hasOtherContent;
+
+                function NoteRow({ note }: { note: AuthorNote }) {
+                  return (
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-full bg-[#f0ede8] overflow-hidden flex items-center justify-center font-black text-sm text-[#bbb] flex-shrink-0">
+                        {note.profile?.avatar_url ? (
+                          <Image src={note.profile.avatar_url} alt="" width={36} height={36} className="object-cover" />
+                        ) : (
+                          (note.profile?.username?.[0] ?? "?").toUpperCase()
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-black text-[#5bbcb3] uppercase tracking-wide">
+                            {note.profile?.username ?? "usuario"}
+                            {note.user_id === currentUserId && (
+                              <span className="ml-1 text-[9px] text-[#5bbcb3]/60 normal-case">tú</span>
+                            )}
+                          </span>
+                          <span
+                            className="text-[10px] font-black text-white px-1.5 py-0.5 rounded-md"
+                            style={{ backgroundColor: ScoreColor(note.score) }}
+                          >
+                            {note.score}/10
+                          </span>
+                          {note.isRejelly && (
+                            <span className="text-[9px] font-bold text-[#f59e0b] uppercase tracking-wide">rejelly</span>
+                          )}
+                          <span className="text-[10px] text-[#bbb]">{timeAgo(note.created_at)}</span>
+                        </div>
+                        {note.text ? (
+                          <p className="text-sm text-[#2a2a2a] mt-0.5 leading-snug">{note.text}</p>
+                        ) : (
+                          <p className="text-xs text-[#bbb] mt-0.5 italic">Sin comentario</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                function CommentRow({ comment }: { comment: Comment }) {
+                  return (
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-full bg-[#f0ede8] overflow-hidden flex items-center justify-center font-black text-sm text-[#bbb] flex-shrink-0">
+                        {comment.profile?.avatar_url ? (
+                          <Image src={comment.profile.avatar_url} alt="" width={36} height={36} className="object-cover" />
+                        ) : (
+                          (comment.profile?.username?.[0] ?? "?").toUpperCase()
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-xs font-black text-[#5bbcb3] uppercase tracking-wide">
+                            {comment.profile?.username ?? "usuario"}
+                          </span>
+                          <span className="text-[10px] text-[#bbb]">{timeAgo(comment.created_at)}</span>
+                        </div>
+                        <p className="text-sm text-[#2a2a2a] mt-0.5 leading-snug">{comment.text}</p>
+                      </div>
+                      {comment.user_id === currentUserId && (
+                        <button onClick={() => deleteComment(comment.id)}
+                          className="flex-shrink-0 text-[#ddd] active:text-[#e8363a] transition-colors mt-1">
+                          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                          </svg>
+                        </button>
                       )}
-                      <span className="text-[10px] text-[#bbb]">{timeAgo(note.created_at)}</span>
                     </div>
-                    {note.text ? (
-                      <p className="text-sm text-[#2a2a2a] mt-0.5 leading-snug">{note.text}</p>
-                    ) : (
-                      <p className="text-xs text-[#bbb] mt-0.5 italic">Sin comentario</p>
-                    )}
-                  </div>
-                </div>
-              ))}
+                  );
+                }
 
-              {/* Divider between author notes and comments */}
-              {authorNotes.length > 0 && comments.length > 0 && (
-                <div className="flex items-center gap-2 py-1">
-                  <div className="flex-1 h-px bg-[#f0ede8]" />
-                  <span className="text-[10px] text-[#ccc] font-bold uppercase tracking-widest">Comentarios</span>
-                  <div className="flex-1 h-px bg-[#f0ede8]" />
-                </div>
-              )}
-
-              {/* Regular comments */}
-              {comments.map(comment => (
-                <div key={comment.id} className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-full bg-[#f0ede8] overflow-hidden flex items-center justify-center font-black text-sm text-[#bbb] flex-shrink-0">
-                    {comment.profile?.avatar_url ? (
-                      <Image src={comment.profile.avatar_url} alt="" width={36} height={36} className="object-cover" />
-                    ) : (
-                      (comment.profile?.username?.[0] ?? "?").toUpperCase()
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-xs font-black text-[#5bbcb3] uppercase tracking-wide">
-                        {comment.profile?.username ?? "usuario"}
+                function SectionHeader({ label, teal }: { label: string; teal?: boolean }) {
+                  return (
+                    <div className="flex items-center gap-2 py-1">
+                      <div className={`flex-1 h-px ${teal ? "bg-[#c8eceb]" : "bg-[#f0ede8]"}`} />
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${teal ? "text-[#5bbcb3]" : "text-[#ccc]"}`}>
+                        {label}
                       </span>
-                      <span className="text-[10px] text-[#bbb]">{timeAgo(comment.created_at)}</span>
+                      <div className={`flex-1 h-px ${teal ? "bg-[#c8eceb]" : "bg-[#f0ede8]"}`} />
                     </div>
-                    <p className="text-sm text-[#2a2a2a] mt-0.5 leading-snug">{comment.text}</p>
-                  </div>
-                  {comment.user_id === currentUserId && (
-                    <button onClick={() => deleteComment(comment.id)}
-                      className="flex-shrink-0 text-[#ddd] active:text-[#e8363a] transition-colors mt-1">
-                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              ))}
+                  );
+                }
 
-              {/* Empty state — only if no author notes AND no comments */}
-              {isEmpty && (
-                <div className="flex flex-col items-center justify-center py-8 gap-2">
-                  <div className="w-12 h-12 rounded-2xl bg-[#f5f2ee] flex items-center justify-center">
-                    <svg width="22" height="22" fill="none" stroke="#ccc" strokeWidth={1.5} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z" />
-                    </svg>
-                  </div>
-                  <p className="text-xs font-black text-[#bbb] uppercase tracking-widest text-center">Sin comentarios aún</p>
-                  <p className="text-xs text-[#ccc] text-center">¡Sé el primero en comentar!</p>
-                </div>
-              )}
+                return (
+                  <>
+                    {/* ── Tu red ── */}
+                    {hasFriendContent && (
+                      <>
+                        {hasSections && <SectionHeader label="Tu red" teal />}
+                        {friendNotes.map(n => <NoteRow key={n.id} note={n} />)}
+                        {friendComments.map(c => <CommentRow key={c.id} comment={c} />)}
+                      </>
+                    )}
+
+                    {/* ── Todos ── */}
+                    {hasOtherContent && (
+                      <>
+                        {hasSections && <SectionHeader label="Todos" />}
+                        {otherNotes.map(n => <NoteRow key={n.id} note={n} />)}
+                        {otherComments.map(c => <CommentRow key={c.id} comment={c} />)}
+                      </>
+                    )}
+
+                    {/* Empty state */}
+                    {isEmpty && (
+                      <div className="flex flex-col items-center justify-center py-8 gap-2">
+                        <div className="w-12 h-12 rounded-2xl bg-[#f5f2ee] flex items-center justify-center">
+                          <svg width="22" height="22" fill="none" stroke="#ccc" strokeWidth={1.5} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z" />
+                          </svg>
+                        </div>
+                        <p className="text-xs font-black text-[#bbb] uppercase tracking-widest text-center">Sin comentarios aún</p>
+                        <p className="text-xs text-[#ccc] text-center">¡Sé el primero en comentar!</p>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </>
           )}
         </div>

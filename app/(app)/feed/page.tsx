@@ -16,6 +16,9 @@ export default function FeedPage() {
   const [hasMore, setHasMore] = useState(true);
   const [userId, setUserId] = useState<string | undefined>();
 
+  // Following IDs for friend ratings (use ref to avoid fetchPage dep change)
+  const followingIdsRef = useRef<string[]>([]);
+
   // Pull-to-refresh
   const [pullY, setPullY] = useState(0);
   const [isPulling, setIsPulling] = useState(false);
@@ -30,7 +33,37 @@ export default function FeedPage() {
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
-      setUserId(user?.id);
+      const uid = user?.id;
+
+      if (uid) {
+        // Fetch who the user follows (for friend ratings)
+        const { data: followData } = await supabase
+          .from("follows")
+          .select("following_id")
+          .eq("follower_id", uid)
+          .eq("status", "accepted");
+        followingIdsRef.current = (followData ?? []).map((f: any) => f.following_id);
+
+        // Handle pending invite follow (set by /join/[username] page)
+        const inviteFrom = typeof window !== "undefined"
+          ? localStorage.getItem("invite_from")
+          : null;
+        if (inviteFrom) {
+          localStorage.removeItem("invite_from");
+          supabase.from("profiles").select("id").eq("username", inviteFrom).single()
+            .then(({ data: inviterProfile }) => {
+              if (inviterProfile) {
+                supabase.from("follows").upsert({
+                  follower_id: uid,
+                  following_id: inviterProfile.id,
+                  status: "accepted",
+                });
+              }
+            });
+        }
+      }
+
+      setUserId(uid);
     }
     init();
   }, []);
@@ -47,6 +80,7 @@ export default function FeedPage() {
 
     if (!data?.length) return [];
 
+    const jellyIds = data.map((j: any) => j.id);
     const userIds = [...new Set(data.map((j: any) => j.user_id))];
     const { data: profilesData } = await supabase
       .from("profiles").select("id, username, avatar_url, full_name").in("id", userIds);
@@ -55,7 +89,6 @@ export default function FeedPage() {
 
     let likedSet = new Set<string>(), savedSet = new Set<string>();
     if (uid) {
-      const jellyIds = data.map((j: any) => j.id);
       const [{ data: ld }, { data: sd }] = await Promise.all([
         supabase.from("likes").select("jellyrate_id").eq("user_id", uid).in("jellyrate_id", jellyIds),
         supabase.from("saves").select("jellyrate_id").eq("user_id", uid).in("jellyrate_id", jellyIds),
@@ -72,6 +105,37 @@ export default function FeedPage() {
       statsMap[s.canonical_key] = { avg_score: Number(s.avg_score), total_ratings: Number(s.total_ratings) };
     });
 
+    // Fetch friend ratings (rejellies from people I follow)
+    const friendRatingsMap: Record<string, Array<{ username: string; avatar_url: string | null; score: number }>> = {};
+    const followingIds = followingIdsRef.current;
+    if (followingIds.length > 0) {
+      const { data: friendRejellies } = await supabase
+        .from("rejellies")
+        .select("user_id, score, jellyrate_id")
+        .in("jellyrate_id", jellyIds)
+        .in("user_id", followingIds);
+
+      if (friendRejellies?.length) {
+        const friendUserIds = [...new Set(friendRejellies.map((r: any) => r.user_id))];
+        const { data: friendProfilesData } = await supabase
+          .from("profiles")
+          .select("id, username, avatar_url")
+          .in("id", friendUserIds);
+        const friendProfileMap: Record<string, any> = {};
+        (friendProfilesData ?? []).forEach((p: any) => { friendProfileMap[p.id] = p; });
+
+        (friendRejellies ?? []).forEach((r: any) => {
+          const p = friendProfileMap[r.user_id];
+          if (!friendRatingsMap[r.jellyrate_id]) friendRatingsMap[r.jellyrate_id] = [];
+          friendRatingsMap[r.jellyrate_id].push({
+            username: p?.username ?? "usuario",
+            avatar_url: p?.avatar_url ?? null,
+            score: r.score,
+          });
+        });
+      }
+    }
+
     return data.map((j: any) => {
       const key = j.canonical_id ?? j.id;
       const stats = statsMap[key];
@@ -85,6 +149,7 @@ export default function FeedPage() {
         rejellies_count: j.rejellies_count ?? 0,
         avg_score: stats?.avg_score ?? j.score,
         total_ratings: stats?.total_ratings ?? 1,
+        friendRatings: friendRatingsMap[j.id] ?? [],
       };
     });
   }, []);

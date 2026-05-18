@@ -10,6 +10,35 @@ import { ScoreColor } from "@/components/JellyCard";
 
 type GridTab = "jellies" | "rejellies" | "saved";
 
+function InviteButton({ username }: { username: string }) {
+  const [copied, setCopied] = useState(false);
+  function handleInvite() {
+    const url = `${window.location.origin}/join/${username}`;
+    if (navigator.share) {
+      navigator.share({ title: "JellyRate", text: `Únete a JellyRate y ve mis ratings`, url });
+    } else {
+      navigator.clipboard.writeText(url).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      });
+    }
+  }
+  return (
+    <button
+      onClick={handleInvite}
+      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl bg-[#e8363a] active:opacity-80 transition-opacity"
+    >
+      {copied
+        ? <svg width="13" height="13" fill="none" stroke="white" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+        : <svg width="13" height="13" fill="none" stroke="white" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" /></svg>
+      }
+      <span className="text-xs font-black text-white uppercase tracking-widest">
+        {copied ? "¡Link!" : "Invitar"}
+      </span>
+    </button>
+  );
+}
+
 const ZigZag = () => (
   <div className="h-2" style={{
     backgroundImage: `linear-gradient(135deg, #e8e3dd 25%, transparent 25%) -8px 0, linear-gradient(225deg, #e8e3dd 25%, transparent 25%) -8px 0, linear-gradient(315deg, #e8e3dd 25%, transparent 25%), linear-gradient(45deg, #e8e3dd 25%, transparent 25%)`,
@@ -157,15 +186,17 @@ export default function ProfilePage() {
             <p className="text-xs text-[#777] mt-2 text-center leading-snug max-w-[260px]">{profile.bio}</p>
           )}
 
-          {/* Edit button */}
-          <Link href="/profile/edit" className="mt-4 w-full max-w-[200px]">
-            <div className="flex items-center justify-center gap-2 py-2.5 rounded-2xl border border-[#e0dbd4] bg-white active:bg-[#f5f2ee] transition-colors">
-              <svg width="14" height="14" fill="none" stroke="#4a4a4a" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-              </svg>
-              <span className="text-xs font-black text-[#4a4a4a] uppercase tracking-widest">Editar perfil</span>
-            </div>
-          </Link>
+          {/* Edit + Invite buttons */}
+          <div className="mt-4 w-full flex gap-2 max-w-[280px]">
+            <Link href="/profile/edit" className="flex-1">
+              <div className="flex items-center justify-center gap-1.5 py-2.5 rounded-2xl border border-[#e0dbd4] bg-white active:bg-[#f5f2ee] transition-colors">
+                <svg width="13" height="13" fill="none" stroke="#4a4a4a" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                </svg>
+                <span className="text-xs font-black text-[#4a4a4a] uppercase tracking-widest">Editar</span>
+              </div>
+            </Link>
+            <InviteButton username={username} /></div>
         </div>
 
         {/* Stats row */}
