@@ -105,29 +105,42 @@ export default function FeedPage() {
       savedSet = new Set(sd?.map((s: any) => s.jellyrate_id) ?? []);
     }
 
-    // Fetch rejellies from my circle on these posts (for circle-only avg score)
-    // myCircle includes uid so chino's own rejelly is counted in the avg too
-    const friendRatingsMap: Record<string, Array<{ username: string; avatar_url: string | null; score: number }>> = {};
-    if (myCircle.length > 0) {
-      const { data: circleRejellies } = await supabase
-        .from("rejellies")
-        .select("user_id, score, jellyrate_id")
-        .in("jellyrate_id", jellyIds)
+    // Circle avg via canonical_id:
+    // All jellyrates from myCircle that share the same canonical_id are averaged together.
+    // This means if Pablo, Chino, and User A each independently rated "Hail Mary",
+    // the score shown on Pablo's card reflects all three circle ratings — not just Pablo's.
+    const canonicalIds = [...new Set(
+      data.map((j: any) => j.canonical_id).filter(Boolean)
+    )] as string[];
+
+    // canonical_id → array of circle ratings for that item
+    type CircleRating = { user_id: string; username: string; avatar_url: string | null; score: number };
+    const canonicalScoresMap: Record<string, CircleRating[]> = {};
+
+    if (canonicalIds.length > 0) {
+      const { data: canonicalRatings } = await supabase
+        .from("jellyrates")
+        .select("id, user_id, score, canonical_id")
+        .in("canonical_id", canonicalIds)
         .in("user_id", myCircle);
 
-      if (circleRejellies?.length) {
-        const rUserIds = [...new Set(circleRejellies.map((r: any) => r.user_id))];
-        const { data: rProfiles } = await supabase
-          .from("profiles").select("id, username, avatar_url").in("id", rUserIds);
-        const rProfileMap: Record<string, any> = {};
-        (rProfiles ?? []).forEach((p: any) => { rProfileMap[p.id] = p; });
+      if (canonicalRatings?.length) {
+        // Fetch profiles for users not already in profileMap
+        const extraIds = [...new Set(
+          canonicalRatings.map((r: any) => r.user_id).filter((id: string) => !profileMap[id])
+        )];
+        if (extraIds.length > 0) {
+          const { data: extraProfiles } = await supabase
+            .from("profiles").select("id, username, avatar_url").in("id", extraIds);
+          (extraProfiles ?? []).forEach((p: any) => { profileMap[p.id] = p; });
+        }
 
-        (circleRejellies ?? []).forEach((r: any) => {
-          const p = rProfileMap[r.user_id];
-          if (!friendRatingsMap[r.jellyrate_id]) friendRatingsMap[r.jellyrate_id] = [];
-          friendRatingsMap[r.jellyrate_id].push({
-            username: p?.username ?? "usuario",
-            avatar_url: p?.avatar_url ?? null,
+        canonicalRatings.forEach((r: any) => {
+          if (!canonicalScoresMap[r.canonical_id]) canonicalScoresMap[r.canonical_id] = [];
+          canonicalScoresMap[r.canonical_id].push({
+            user_id: r.user_id,
+            username: profileMap[r.user_id]?.username ?? "usuario",
+            avatar_url: profileMap[r.user_id]?.avatar_url ?? null,
             score: r.score,
           });
         });
@@ -135,12 +148,17 @@ export default function FeedPage() {
     }
 
     return data.map((j: any) => {
-      // Circle avg = creator's score + rejellies from people I follow
-      const circleRejellies = friendRatingsMap[j.id] ?? [];
-      const circleScores = [j.score, ...circleRejellies.map((r: any) => r.score)];
+      // All circle ratings for this canonical item (including the post's own creator)
+      const canonicalRatings = j.canonical_id ? (canonicalScoresMap[j.canonical_id] ?? []) : [];
+      const allScores = canonicalRatings.length > 0
+        ? canonicalRatings.map((r: CircleRating) => r.score)
+        : [j.score];
       const circleAvg = Math.round(
-        (circleScores.reduce((a, b) => a + b, 0) / circleScores.length) * 10
+        (allScores.reduce((a: number, b: number) => a + b, 0) / allScores.length) * 10
       ) / 10;
+
+      // friendRatings strip: circle members OTHER than this card's creator
+      const friendRatings = canonicalRatings.filter((r: CircleRating) => r.user_id !== j.user_id);
 
       return {
         ...j,
@@ -151,8 +169,8 @@ export default function FeedPage() {
         comments_count: j.comments_count ?? 0,
         rejellies_count: j.rejellies_count ?? 0,
         avg_score: circleAvg,
-        total_ratings: circleScores.length,
-        friendRatings: circleRejellies,
+        total_ratings: allScores.length,
+        friendRatings: friendRatings,
       };
     });
   }, []);
