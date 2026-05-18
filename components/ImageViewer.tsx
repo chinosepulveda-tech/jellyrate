@@ -42,8 +42,9 @@ export default function ImageViewer({ src, title, score, username, onClose }: Pr
       </div>
 
       {/* Image */}
-      <div className="w-full max-w-[480px] aspect-square relative">
-        <Image src={src} alt={title} fill className="object-contain" unoptimized />
+      <div className="w-full max-w-[480px] flex items-center justify-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt={title} className="w-full h-auto max-h-[80vh] object-contain" />
       </div>
 
       {/* Score bar */}

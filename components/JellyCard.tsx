@@ -335,13 +335,19 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
 
       {/* ── Photo ── */}
       <div
-        className="relative aspect-square bg-[#f0ede8] overflow-hidden select-none"
+        className="relative bg-[#f0ede8] select-none overflow-hidden"
         onClick={handlePhotoTap}
       >
         {jelly.photo_url ? (
-          <Image src={jelly.photo_url} alt={jelly.title} fill className="object-cover" unoptimized />
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={jelly.photo_url}
+            alt={jelly.title}
+            className="w-full h-auto block"
+            style={{ maxHeight: "85vh" }}
+          />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
+          <div className="aspect-square flex items-center justify-center">
             <svg width="48" height="48" fill="none" stroke="#ddd" strokeWidth={1} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
             </svg>
