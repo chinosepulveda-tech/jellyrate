@@ -117,11 +117,14 @@ export default function FeedPage() {
     const canonicalScoresMap: Record<string, CircleRating[]> = {};
 
     if (canonicalIds.length > 0) {
-      // 1. Independent jellyrates for these canonical items from myCircle
+      // 1. Independent jellyrates for these canonical items from myCircle.
+      // Includes both:
+      //   a) posts that POINT TO the canonical root (canonical_id = root_id)
+      //   b) the canonical ROOT itself (id = root_id, canonical_id = null)
       const { data: canonicalJellyrates } = await supabase
         .from("jellyrates")
         .select("id, user_id, score, canonical_id")
-        .in("canonical_id", canonicalIds)
+        .or(`canonical_id.in.(${canonicalIds.join(",")}),id.in.(${canonicalIds.join(",")})`)
         .in("user_id", myCircle);
 
       // Fetch profiles not already in profileMap
@@ -134,12 +137,16 @@ export default function FeedPage() {
         (ep ?? []).forEach((p: any) => { profileMap[p.id] = p; });
       }
 
-      // Build map and track which jellyrate IDs belong to which canonical item
+      // Build map and track which jellyrate IDs belong to which canonical item.
+      // For the canonical root (canonical_id = null, id = rootId), we use its own
+      // id as the key — same key the other posts use when they set canonical_id = rootId.
       const jellyIdToCanonical: Record<string, string> = {};
       (canonicalJellyrates ?? []).forEach((r: any) => {
-        jellyIdToCanonical[r.id] = r.canonical_id;
-        if (!canonicalScoresMap[r.canonical_id]) canonicalScoresMap[r.canonical_id] = [];
-        canonicalScoresMap[r.canonical_id].push({
+        // The effective canonical key: canonical_id if set, otherwise own id (root)
+        const key: string = r.canonical_id ?? r.id;
+        jellyIdToCanonical[r.id] = key;
+        if (!canonicalScoresMap[key]) canonicalScoresMap[key] = [];
+        canonicalScoresMap[key].push({
           user_id: r.user_id,
           username: profileMap[r.user_id]?.username ?? "usuario",
           avatar_url: profileMap[r.user_id]?.avatar_url ?? null,
