@@ -113,9 +113,8 @@ export default function CreatePage() {
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) throw new Error("No autenticado");
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error("No autenticado");
 
       const ext = photoFile.name.split(".").pop();
       const path = `${user.id}/${Date.now()}.${ext}`;
