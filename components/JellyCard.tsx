@@ -538,72 +538,91 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
   const timeAgo = formatTimeAgo(jelly.created_at);
   const username = jelly.profile?.username ?? "usuario";
 
-  // ── Pinch-to-zoom (native listeners so we can preventDefault) ────────
+  // ── Photo touch: pinch-to-zoom + double-tap like ─────────────────────
   const [imgScale, setImgScale] = useState(1);
-  const imgScaleRef = useRef(1); // mirror for use inside event listeners
   const photoContainerRef = useRef<HTMLDivElement>(null);
-  const pinchRef = useRef<{ dist: number; scale: number } | null>(null);
+  // Refs so native event listeners always see current values (no stale closure)
+  const imgScaleRef = useRef(1);
+  const likedRef = useRef(liked);
+  const currentUserIdRef = useRef(currentUserId);
 
-  useEffect(() => {
-    imgScaleRef.current = imgScale;
-  }, [imgScale]);
+  useEffect(() => { imgScaleRef.current = imgScale; }, [imgScale]);
+  useEffect(() => { likedRef.current = liked; }, [liked]);
+  useEffect(() => { currentUserIdRef.current = currentUserId; }, [currentUserId]);
 
   useEffect(() => {
     const el = photoContainerRef.current;
     if (!el) return;
 
-    function dist(t: TouchList) {
+    let pinchState: { dist: number; scale: number } | null = null;
+    let isPinching = false;
+    let lastTapTs = 0;
+
+    function getDist(t: TouchList) {
       const dx = t[0].clientX - t[1].clientX;
       const dy = t[0].clientY - t[1].clientY;
       return Math.sqrt(dx * dx + dy * dy);
     }
 
-    function onTouchStart(e: TouchEvent) {
+    function onStart(e: TouchEvent) {
       if (e.touches.length === 2) {
-        pinchRef.current = { dist: dist(e.touches), scale: imgScaleRef.current };
+        isPinching = true;
+        pinchState = { dist: getDist(e.touches), scale: imgScaleRef.current };
       }
     }
 
-    function onTouchMove(e: TouchEvent) {
-      if (e.touches.length === 2 && pinchRef.current) {
-        e.preventDefault(); // needs passive:false
-        const ratio = dist(e.touches) / pinchRef.current.dist;
-        const next = Math.min(4, Math.max(1, pinchRef.current.scale * ratio));
+    function onMove(e: TouchEvent) {
+      if (e.touches.length === 2 && pinchState) {
+        e.preventDefault(); // stops browser page-zoom & scroll
+        const ratio = getDist(e.touches) / pinchState.dist;
+        const next = Math.min(4, Math.max(1, pinchState.scale * ratio));
         imgScaleRef.current = next;
         setImgScale(next);
       }
     }
 
-    function onTouchEnd() {
-      if (!pinchRef.current) return;
-      pinchRef.current = null;
+    function onEnd(e: TouchEvent) {
+      if (isPinching) {
+        if (e.touches.length === 0) {
+          isPinching = false;
+          pinchState = null;
+          // Snap back if barely zoomed
+          setImgScale(s => (s < 1.08 ? 1 : s));
+        }
+        return; // don't treat pinch-end as a tap
+      }
+      // Double-tap → like
+      const now = Date.now();
+      if (now - lastTapTs < 300) {
+        if (!likedRef.current && currentUserIdRef.current) {
+          doLike();
+          setHeartPop(true);
+          setTimeout(() => setHeartPop(false), 800);
+        }
+        lastTapTs = 0;
+      } else {
+        lastTapTs = now;
+      }
+    }
+
+    function onCancel() {
+      isPinching = false;
+      pinchState = null;
       setImgScale(s => (s < 1.08 ? 1 : s));
     }
 
-    el.addEventListener("touchstart", onTouchStart, { passive: true });
-    el.addEventListener("touchmove", onTouchMove, { passive: false });
-    el.addEventListener("touchend", onTouchEnd, { passive: true });
-    el.addEventListener("touchcancel", onTouchEnd, { passive: true });
-
+    el.addEventListener("touchstart", onStart,  { passive: true });
+    el.addEventListener("touchmove",  onMove,   { passive: false }); // must be non-passive for preventDefault
+    el.addEventListener("touchend",   onEnd,    { passive: true });
+    el.addEventListener("touchcancel", onCancel, { passive: true });
     return () => {
-      el.removeEventListener("touchstart", onTouchStart);
-      el.removeEventListener("touchmove", onTouchMove);
-      el.removeEventListener("touchend", onTouchEnd);
-      el.removeEventListener("touchcancel", onTouchEnd);
+      el.removeEventListener("touchstart",  onStart);
+      el.removeEventListener("touchmove",   onMove);
+      el.removeEventListener("touchend",    onEnd);
+      el.removeEventListener("touchcancel", onCancel);
     };
-  }, []);
-
-  // ── Double-tap to like (no single-tap action) ─────────────────────────
-  const handlePhotoTap = useCallback(() => {
-    const now = Date.now();
-    const isDouble = now - lastTap.current < 350;
-    lastTap.current = now;
-    if (isDouble && !liked && currentUserId) {
-      doLike();
-      setHeartPop(true);
-      setTimeout(() => setHeartPop(false), 800);
-    }
-  }, [liked, currentUserId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally empty — uses refs for live values
 
   async function doLike() {
     await supabase.from("likes").insert({ user_id: currentUserId, jellyrate_id: jelly.id });
@@ -725,7 +744,7 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
       <div
         ref={photoContainerRef}
         className="relative bg-[#f0ede8] select-none overflow-hidden"
-        onClick={handlePhotoTap}
+        style={{ touchAction: "pan-y" }}
       >
         {jelly.photo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
