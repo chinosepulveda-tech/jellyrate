@@ -363,7 +363,7 @@ function Slide1() {
           >
             RATE.
           </div>
-          <div style={{ position: "absolute", top: 80, right: -6 }}>
+          <div style={{ position: "absolute", top: 115, right: -6 }}>
             <JellyBadge color={JR.red} size={134} rotate={9}>
               <div
                 style={{
@@ -379,12 +379,13 @@ function Slide1() {
                 style={{
                   fontFamily: fontBody,
                   fontWeight: 900,
-                  fontSize: 9,
-                  letterSpacing: "0.22em",
+                  fontSize: 8,
+                  letterSpacing: "0.18em",
                   marginTop: 6,
+                  lineHeight: 1.3,
                 }}
               >
-                SEGÚN ANA
+                SEGÚN TUS AMIGOS
               </div>
             </JellyBadge>
           </div>
