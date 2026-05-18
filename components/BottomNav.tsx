@@ -2,9 +2,33 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const supabase = createClient();
+  const [unread, setUnread] = useState(0);
+
+  const fetchUnread = useCallback(async () => {
+    const { data } = await supabase.rpc("get_unread_count");
+    setUnread(data ?? 0);
+  }, [supabase]);
+
+  useEffect(() => {
+    fetchUnread();
+  }, [pathname, fetchUnread]); // re-check whenever route changes
+
+  // Realtime: refresh badge when a new message arrives
+  useEffect(() => {
+    const channel = supabase
+      .channel("nav-unread")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => {
+        fetchUnread();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [supabase, fetchUnread]);
 
   const tabs = [
     {
@@ -39,6 +63,7 @@ export default function BottomNav() {
     {
       href: "/messages",
       label: "Mensajes",
+      badge: unread,
       icon: (active: boolean) => (
         <svg width="24" height="24" fill={active ? "#e8363a" : "none"} stroke={active ? "#e8363a" : "#c8c3bc"} strokeWidth={active ? 2.5 : 1.8} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
@@ -65,6 +90,7 @@ export default function BottomNav() {
         {tabs.map(tab => {
           const active = pathname === tab.href || (tab.href !== "/" && pathname.startsWith(tab.href + "/"));
           const isCreate = tab.href === "/create";
+          const badge = "badge" in tab ? (tab as any).badge : 0;
           return (
             <Link
               key={tab.href}
@@ -75,11 +101,10 @@ export default function BottomNav() {
             >
               <div className="relative">
                 {tab.icon(active)}
-                {/* Unread badge */}
-                {"badge" in tab && (tab as any).badge > 0 && (
-                  <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#e8363a] border-2 border-white flex items-center justify-center">
+                {badge > 0 && (
+                  <div className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-[#e8363a] border-2 border-white flex items-center justify-center px-0.5">
                     <span className="text-[8px] font-black text-white leading-none">
-                      {(tab as any).badge > 9 ? "9+" : (tab as any).badge}
+                      {badge > 99 ? "99+" : badge > 9 ? `${badge}` : badge}
                     </span>
                   </div>
                 )}

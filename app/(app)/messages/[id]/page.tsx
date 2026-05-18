@@ -128,6 +128,11 @@ export default function ChatPage() {
     setLoading(false);
   }, [supabase, conversationId]);
 
+  // ── mark read ─────────────────────────────────────────────────────────────
+  const markRead = useCallback(async () => {
+    await supabase.rpc("mark_conversation_read", { conv_id: conversationId });
+  }, [supabase, conversationId]);
+
   // ── init ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     async function init() {
@@ -144,10 +149,11 @@ export default function ChatPage() {
       }
 
       await loadMessages();
+      await markRead();
       scrollToBottom("instant" as ScrollBehavior);
     }
     init();
-  }, [conversationId, loadMessages, router, scrollToBottom, supabase]);
+  }, [conversationId, loadMessages, markRead, router, scrollToBottom, supabase]);
 
   // ── realtime ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -189,12 +195,14 @@ export default function ChatPage() {
             return [...prev, newMsg];
           });
           scrollToBottom();
+          // Mark as read since the chat is open
+          markRead();
         }
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [myId, conversationId, supabase, scrollToBottom]);
+  }, [myId, conversationId, supabase, scrollToBottom, markRead]);
 
   // ── send ──────────────────────────────────────────────────────────────────
   async function sendMessage() {
