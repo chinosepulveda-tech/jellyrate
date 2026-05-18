@@ -307,7 +307,7 @@ export default function CreatePage() {
                   onChange={(e) => handleTitleChange(e.target.value)}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                   onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                  placeholder="¿Qué estás calificando?"
+                  placeholder="¿Qué quieres calificar?"
                   maxLength={80}
                   className={`w-full bg-white border rounded-xl px-4 py-3 text-[#2a2a2a] placeholder:text-[#ccc] focus:border-[#e8363a] transition-colors text-sm ${
                     linkedItem ? "border-[#22c55e] pr-10" : "border-[#e0dbd4]"

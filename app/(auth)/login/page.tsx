@@ -36,7 +36,7 @@ export default function LoginPage() {
         <h1 className="text-5xl font-black tracking-tight">
           <span className="text-[#e8363a]">Jelly</span><span className="text-[#2a2a2a]">Rate</span>
         </h1>
-        <p className="mt-2 text-xs font-black text-[#999] uppercase tracking-widest">Rate anything. Trust your people.</p>
+        <p className="mt-2 text-xs font-black text-[#999] uppercase tracking-widest">Califica todo. Confía en tu gente.</p>
       </div>
 
       {/* Form */}
