@@ -9,17 +9,109 @@ import ImageViewer from "@/components/ImageViewer";
 import { useToast } from "@/components/Toast";
 import type { JellyRate } from "@/lib/types";
 
+// ── Edit sheet ────────────────────────────────────────────────────────
+function EditSheet({
+  jelly,
+  onClose,
+  onSaved,
+}: {
+  jelly: JellyRate;
+  onClose: () => void;
+  onSaved: (title: string, description: string) => void;
+}) {
+  const supabase = createClient();
+  const [title, setTitle] = useState(jelly.title);
+  const [description, setDescription] = useState(jelly.description ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSave() {
+    const t = title.trim();
+    if (!t) { setError("El título no puede estar vacío."); return; }
+    setSaving(true);
+    const { error: err } = await supabase
+      .from("jellyrates")
+      .update({ title: t, description: description.trim() || null })
+      .eq("id", jelly.id);
+    setSaving(false);
+    if (err) { setError("No se pudo guardar. Intenta de nuevo."); return; }
+    onSaved(t, description.trim());
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div
+        className="relative w-full max-w-[480px] mx-auto bg-white rounded-t-3xl overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-[#e0dbd4]" />
+        </div>
+        <div className="px-5 pb-2 pt-1">
+          <h2 className="font-black text-base text-[#1a1a1a] uppercase tracking-wide">Editar JellyRate</h2>
+          <p className="text-xs text-[#aaa] mt-0.5">Solo el título y el comentario son editables.</p>
+        </div>
+        <div className="px-5 pb-4 flex flex-col gap-4">
+          <div>
+            <label className="text-[11px] font-black text-[#888] uppercase tracking-widest block mb-1.5">Título</label>
+            <input
+              value={title}
+              onChange={e => { setTitle(e.target.value); setError(""); }}
+              maxLength={120}
+              className="w-full border-2 border-[#1a1a1a] bg-white px-3.5 py-2.5 text-sm font-black text-[#1a1a1a] focus:outline-none focus:border-[#e8363a] transition-colors"
+              style={{ boxShadow: "2px 2px 0 #1a1a1a" }}
+            />
+          </div>
+          <div>
+            <label className="text-[11px] font-black text-[#888] uppercase tracking-widest block mb-1.5">Comentario</label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              maxLength={500}
+              rows={3}
+              placeholder="Agrega un comentario… (opcional)"
+              className="w-full border-2 border-[#1a1a1a] bg-white px-3.5 py-2.5 text-sm text-[#1a1a1a] placeholder:text-[#bbb] focus:outline-none focus:border-[#e8363a] transition-colors resize-none"
+              style={{ boxShadow: "2px 2px 0 #1a1a1a" }}
+            />
+          </div>
+          {error && <p className="text-xs text-[#e8363a] font-bold">{error}</p>}
+          <div className="flex gap-3 pb-4" style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}>
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 border-2 border-[#1a1a1a] text-xs font-black text-[#1a1a1a] uppercase tracking-wide active:opacity-70"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 py-3 bg-[#e8363a] text-xs font-black text-white uppercase tracking-wide active:opacity-80 disabled:opacity-50"
+              style={{ boxShadow: saving ? "none" : "2px 2px 0 #1a1a1a" }}
+            >
+              {saving ? "Guardando…" : "Guardar"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Action menu sheet ──────────────────────────────────────────────────
 function ActionSheet({
   jelly,
   isOwner,
   onClose,
   onDeleted,
+  onEdit,
 }: {
   jelly: JellyRate;
   isOwner: boolean;
   onClose: () => void;
   onDeleted?: () => void;
+  onEdit?: () => void;
 }) {
   const supabase = createClient();
   const [deleting, setDeleting] = useState(false);
@@ -83,6 +175,19 @@ function ActionSheet({
               {copied ? "¡Copiado!" : "Copiar enlace"}
             </span>
           </button>
+          {isOwner && (
+            <button
+              onClick={() => { onClose(); onEdit?.(); }}
+              className="w-full flex items-center gap-4 px-5 py-4 active:bg-[#f5f2ee] transition-colors"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#f0ede8] flex items-center justify-center flex-shrink-0">
+                <svg width="18" height="18" fill="none" stroke="#1a1a1a" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+                </svg>
+              </div>
+              <span className="font-black text-sm text-[#1a1a1a] uppercase tracking-wide">Editar JellyRate</span>
+            </button>
+          )}
           {isOwner && (
             <button
               onClick={handleDelete}
@@ -191,8 +296,11 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
   const [rejellyDone, setRejellyDone] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const [deleted, setDeleted] = useState(false);
   const [showViewer, setShowViewer] = useState(false);
+  const [localTitle, setLocalTitle] = useState(jelly.title);
+  const [localDescription, setLocalDescription] = useState(jelly.description ?? "");
   const [heartPop, setHeartPop] = useState(false);
   const lastTap = useRef<number>(0);
 
@@ -296,7 +404,7 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
           <Link href={`/profile/${username}`}>
             <p className="font-black text-xs uppercase tracking-widest text-[#2a2a2a] leading-tight">{username}</p>
           </Link>
-          <p className="text-xs text-[#888] truncate leading-tight mt-0.5">{jelly.title}</p>
+          <p className="text-xs text-[#888] truncate leading-tight mt-0.5">{localTitle}</p>
         </div>
 
         {/* Time + location (right column) */}
@@ -453,9 +561,9 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
       )}
 
       {/* ── Caption ── */}
-      {jelly.description && (
+      {localDescription && (
         <div className="px-4 py-2.5 bg-white border-t border-[#f5f2ee]">
-          <p className="text-sm text-[#444] leading-snug">{jelly.description}</p>
+          <p className="text-sm text-[#444] leading-snug">{localDescription}</p>
         </div>
       )}
 
@@ -562,6 +670,16 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
           isOwner={isOwner}
           onClose={() => setShowActions(false)}
           onDeleted={() => setDeleted(true)}
+          onEdit={() => setShowEdit(true)}
+        />
+      )}
+
+      {/* ── Edit Sheet ── */}
+      {showEdit && (
+        <EditSheet
+          jelly={{ ...jelly, title: localTitle, description: localDescription }}
+          onClose={() => setShowEdit(false)}
+          onSaved={(t, d) => { setLocalTitle(t); setLocalDescription(d); }}
         />
       )}
 
