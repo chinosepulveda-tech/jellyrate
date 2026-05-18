@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import OnboardingSlides from "@/components/OnboardingSlides";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function SignupPage() {
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
@@ -35,9 +37,19 @@ export default function SignupPage() {
       setError(signupError.message);
       setLoading(false);
     } else {
-      router.push("/feed");
-      router.refresh();
+      setShowOnboarding(true);
     }
+  }
+
+  if (showOnboarding) {
+    return (
+      <OnboardingSlides
+        onComplete={() => {
+          router.push("/feed");
+          router.refresh();
+        }}
+      />
+    );
   }
 
   return (
