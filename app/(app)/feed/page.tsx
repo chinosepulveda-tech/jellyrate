@@ -106,13 +106,14 @@ export default function FeedPage() {
     }
 
     // Fetch rejellies from my circle on these posts (for circle-only avg score)
+    // myCircle includes uid so chino's own rejelly is counted in the avg too
     const friendRatingsMap: Record<string, Array<{ username: string; avatar_url: string | null; score: number }>> = {};
-    if (followingIds.length > 0) {
+    if (myCircle.length > 0) {
       const { data: circleRejellies } = await supabase
         .from("rejellies")
         .select("user_id, score, jellyrate_id")
         .in("jellyrate_id", jellyIds)
-        .in("user_id", followingIds);
+        .in("user_id", myCircle);
 
       if (circleRejellies?.length) {
         const rUserIds = [...new Set(circleRejellies.map((r: any) => r.user_id))];
