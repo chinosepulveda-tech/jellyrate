@@ -503,45 +503,10 @@ export default function AuthForm({
             marginRight: "auto",
           }}
         >
-          Lo bueno es lo que{" "}
-          <span style={{ color: JR.red }}>recomienda tu gente</span>.
+          Descubre lo que realmente opina{" "}
+          <span style={{ color: JR.red }}>la gente en la que confías</span>.
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 10,
-            marginTop: 14,
-          }}
-        >
-          <div style={{ display: "flex" }}>
-            {[
-              { i: "AN", c: JR.red, r: -6 },
-              { i: "JL", c: JR.teal, r: 4 },
-              { i: "MR", c: "#e8a83a", r: -3 },
-              { i: "SO", c: JR.ink, r: 5 },
-            ].map((a, idx) => (
-              <div key={idx} style={{ marginLeft: idx === 0 ? 0 : -8 }}>
-                <Avatar initials={a.i} color={a.c} size={26} rotate={a.r} />
-              </div>
-            ))}
-          </div>
-          <div
-            style={{
-              fontFamily: fontBody,
-              fontWeight: 900,
-              fontSize: 10,
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              color: JR.ink,
-              opacity: 0.7,
-            }}
-          >
-            +28 amigos ya están adentro
-          </div>
-        </div>
       </div>
 
       {/* ── form area ── */}
