@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Archivo_Black, Archivo } from "next/font/google";
+import { Geist, Archivo } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -7,16 +7,12 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-const archivoBlack = Archivo_Black({
-  variable: "--font-archivo-black",
-  weight: "400",
-  subsets: ["latin"],
-});
-
+// Variable font — incluye eje wdth (75–125) y wght (100–900)
+// font-stretch: expanded  →  wdth 125 (letras más anchas, igual a Claude Design)
 const archivo = Archivo({
   variable: "--font-archivo",
   subsets: ["latin"],
-  weight: ["400", "600", "700", "800", "900"],
+  axes: ["wdth"],
 });
 
 export const metadata: Metadata = {
@@ -51,7 +47,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className={`${geistSans.variable} ${archivoBlack.variable} ${archivo.variable} h-full`}>
+    <html lang="es" className={`${geistSans.variable} ${archivo.variable} h-full`}>
       <body className="min-h-full bg-[#0a0a0a] text-white antialiased">
         {children}
       </body>

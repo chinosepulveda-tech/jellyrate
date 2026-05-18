@@ -13,7 +13,9 @@ const JR = {
   ink: "#1a1a1a",
 } as const;
 
-const fontDisplay = "var(--font-archivo-black), 'Archivo Black', system-ui, sans-serif";
+// fontDisplay se usa para headings + wordmark — Archivo variable weight 900
+// fontWordmark añade font-stretch:expanded para replicar el ancho del Claude Design
+const fontDisplay = "var(--font-archivo), 'Archivo', system-ui, sans-serif";
 const fontBody = "var(--font-archivo), 'Archivo', 'Helvetica Neue', system-ui, sans-serif";
 const fontMono = "'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace";
 
@@ -339,6 +341,7 @@ function Slide1() {
             style={{
               fontFamily: fontDisplay,
               fontWeight: 900,
+              fontStretch: "expanded",
               fontSize: 104,
               lineHeight: 0.84,
               letterSpacing: "-0.055em",
@@ -351,6 +354,7 @@ function Slide1() {
             style={{
               fontFamily: fontDisplay,
               fontWeight: 900,
+              fontStretch: "expanded",
               fontSize: 104,
               lineHeight: 0.84,
               letterSpacing: "-0.055em",
