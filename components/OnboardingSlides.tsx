@@ -342,7 +342,7 @@ function Slide1() {
               fontFamily: fontDisplay,
               fontWeight: 900,
               fontStretch: "expanded",
-              fontSize: 104,
+              fontSize: 82,
               lineHeight: 0.84,
               letterSpacing: "-0.055em",
               color: JR.ink,
@@ -355,7 +355,7 @@ function Slide1() {
               fontFamily: fontDisplay,
               fontWeight: 900,
               fontStretch: "expanded",
-              fontSize: 104,
+              fontSize: 82,
               lineHeight: 0.84,
               letterSpacing: "-0.055em",
               color: JR.red,
@@ -364,7 +364,7 @@ function Slide1() {
           >
             RATE.
           </div>
-          <div style={{ position: "absolute", top: 130, right: -6 }}>
+          <div style={{ position: "absolute", top: 80, right: -6 }}>
             <JellyBadge color={JR.red} size={134} rotate={9}>
               <div
                 style={{
@@ -448,7 +448,7 @@ function Slide2() {
           style={{
             fontFamily: fontDisplay,
             fontWeight: 900,
-            fontSize: 54,
+            fontSize: 44,
             lineHeight: 0.88,
             letterSpacing: "-0.04em",
             marginTop: 18,
@@ -477,7 +477,7 @@ function Slide2() {
           style={{
             fontFamily: fontDisplay,
             fontWeight: 900,
-            fontSize: 54,
+            fontSize: 44,
             lineHeight: 0.88,
             letterSpacing: "-0.04em",
             marginTop: 12,
