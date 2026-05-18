@@ -12,14 +12,13 @@ export default function BottomNav() {
 
   useEffect(() => {
     async function loadUnread() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-      // Try notifications table
       const { count } = await supabase
         .from("notifications")
         .select("*", { count: "exact", head: true })
-        .eq("recipient_id", session.user.id)
+        .eq("recipient_id", user.id)
         .eq("read", false);
 
       setUnreadCount(count ?? 0);
@@ -80,7 +79,10 @@ export default function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white/98 backdrop-blur border-t border-[#ede9e3] z-50 shadow-[0_-4px_24px_rgba(0,0,0,0.07)]">
-      <div className="flex items-end justify-around px-1 pt-2 pb-safe pb-3">
+      <div
+        className="flex items-end justify-around px-1 pt-2"
+        style={{ paddingBottom: "max(14px, env(safe-area-inset-bottom))" }}
+      >
         {tabs.map(tab => {
           const active = pathname === tab.href || (tab.href !== "/" && pathname.startsWith(tab.href + "/"));
           const isCreate = tab.href === "/create";
