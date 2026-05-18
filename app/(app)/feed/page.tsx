@@ -181,19 +181,47 @@ export default function FeedPage() {
       }
     }
 
+    // Title-based grouping for posts already on this page:
+    // Handles posts with null/inconsistent canonical_id that share the same title.
+    // E.g. Pablo, Bruno and Chino each independently posted "Hail Mary" but one
+    // has canonical_id=null — they still need to avg together.
+    const pageTitleMap: Record<string, CircleRating[]> = {};
+    data.forEach((j: any) => {
+      const key = (j.title ?? "").toLowerCase().trim();
+      if (!key) return;
+      if (!pageTitleMap[key]) pageTitleMap[key] = [];
+      pageTitleMap[key].push({
+        user_id: j.user_id,
+        username: profileMap[j.user_id]?.username ?? "usuario",
+        avatar_url: profileMap[j.user_id]?.avatar_url ?? null,
+        score: j.score,
+      });
+    });
+
     return data.map((j: any) => {
+      // Start from canonical query results
       const canonicalRatings: CircleRating[] = j.canonical_id
         ? (canonicalScoresMap[j.canonical_id] ?? [])
         : [];
-      const allScores = canonicalRatings.length > 0
-        ? canonicalRatings.map((r) => r.score)
-        : [j.score];
+
+      // Merge in same-title posts from this page (dedup by user_id)
+      const titleKey = (j.title ?? "").toLowerCase().trim();
+      const pageGroupRatings = pageTitleMap[titleKey] ?? [];
+      const merged: CircleRating[] = [...canonicalRatings];
+      pageGroupRatings.forEach((r) => {
+        if (!merged.some((s) => s.user_id === r.user_id)) merged.push(r);
+      });
+
+      // Also merge circle rejellies that came from the canonical query
+      // (already in canonicalRatings via canonicalScoresMap)
+
+      const allScores = merged.length > 0 ? merged.map((r) => r.score) : [j.score];
       const circleAvg = Math.round(
         (allScores.reduce((a, b) => a + b, 0) / allScores.length) * 10
       ) / 10;
 
       // friendRatings strip: circle members OTHER than this card's creator
-      const friendRatings = canonicalRatings.filter((r) => r.user_id !== j.user_id);
+      const friendRatings = merged.filter((r) => r.user_id !== j.user_id);
 
       return {
         ...j,
