@@ -84,11 +84,6 @@ export default function BottomNav() {
                   </div>
                 )}
               </div>
-              {tab.label && (
-                <span className={`text-[9px] font-black uppercase tracking-widest ${active ? "text-[#e8363a]" : "text-[#c8c3bc]"}`}>
-                  {tab.label}
-                </span>
-              )}
             </Link>
           );
         })}
