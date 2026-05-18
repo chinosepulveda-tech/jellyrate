@@ -72,9 +72,17 @@ export default function FeedPage() {
     uid: string | undefined,
     page: number,
   ): Promise<JellyRate[]> => {
+    const followingIds = followingIdsRef.current;
+    // Feed = only posts from people I follow + my own posts
+    const myCircle = uid ? [...new Set([uid, ...followingIds])] : followingIds;
+
+    // If no circle at all, return empty (user follows nobody and isn't logged in)
+    if (myCircle.length === 0) return [];
+
     const { data } = await supabase
       .from("jellyrates")
       .select("*")
+      .in("user_id", myCircle)
       .order("created_at", { ascending: false })
       .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
@@ -97,35 +105,24 @@ export default function FeedPage() {
       savedSet = new Set(sd?.map((s: any) => s.jellyrate_id) ?? []);
     }
 
-    // Fetch community avg scores for all items in this page
-    const canonicalIds = [...new Set(data.map((j: any) => j.canonical_id ?? j.id))];
-    const { data: statsData } = await supabase.rpc("get_item_stats", { canonical_ids: canonicalIds });
-    const statsMap: Record<string, { avg_score: number; total_ratings: number }> = {};
-    (statsData ?? []).forEach((s: any) => {
-      statsMap[s.canonical_key] = { avg_score: Number(s.avg_score), total_ratings: Number(s.total_ratings) };
-    });
-
-    // Fetch friend ratings (rejellies from people I follow)
+    // Fetch rejellies from my circle on these posts (for circle-only avg score)
     const friendRatingsMap: Record<string, Array<{ username: string; avatar_url: string | null; score: number }>> = {};
-    const followingIds = followingIdsRef.current;
     if (followingIds.length > 0) {
-      const { data: friendRejellies } = await supabase
+      const { data: circleRejellies } = await supabase
         .from("rejellies")
         .select("user_id, score, jellyrate_id")
         .in("jellyrate_id", jellyIds)
         .in("user_id", followingIds);
 
-      if (friendRejellies?.length) {
-        const friendUserIds = [...new Set(friendRejellies.map((r: any) => r.user_id))];
-        const { data: friendProfilesData } = await supabase
-          .from("profiles")
-          .select("id, username, avatar_url")
-          .in("id", friendUserIds);
-        const friendProfileMap: Record<string, any> = {};
-        (friendProfilesData ?? []).forEach((p: any) => { friendProfileMap[p.id] = p; });
+      if (circleRejellies?.length) {
+        const rUserIds = [...new Set(circleRejellies.map((r: any) => r.user_id))];
+        const { data: rProfiles } = await supabase
+          .from("profiles").select("id, username, avatar_url").in("id", rUserIds);
+        const rProfileMap: Record<string, any> = {};
+        (rProfiles ?? []).forEach((p: any) => { rProfileMap[p.id] = p; });
 
-        (friendRejellies ?? []).forEach((r: any) => {
-          const p = friendProfileMap[r.user_id];
+        (circleRejellies ?? []).forEach((r: any) => {
+          const p = rProfileMap[r.user_id];
           if (!friendRatingsMap[r.jellyrate_id]) friendRatingsMap[r.jellyrate_id] = [];
           friendRatingsMap[r.jellyrate_id].push({
             username: p?.username ?? "usuario",
@@ -137,8 +134,13 @@ export default function FeedPage() {
     }
 
     return data.map((j: any) => {
-      const key = j.canonical_id ?? j.id;
-      const stats = statsMap[key];
+      // Circle avg = creator's score + rejellies from people I follow
+      const circleRejellies = friendRatingsMap[j.id] ?? [];
+      const circleScores = [j.score, ...circleRejellies.map((r: any) => r.score)];
+      const circleAvg = Math.round(
+        (circleScores.reduce((a, b) => a + b, 0) / circleScores.length) * 10
+      ) / 10;
+
       return {
         ...j,
         profile: profileMap[j.user_id] ?? null,
@@ -147,9 +149,9 @@ export default function FeedPage() {
         likes_count: j.likes_count ?? 0,
         comments_count: j.comments_count ?? 0,
         rejellies_count: j.rejellies_count ?? 0,
-        avg_score: stats?.avg_score ?? j.score,
-        total_ratings: stats?.total_ratings ?? 1,
-        friendRatings: friendRatingsMap[j.id] ?? [],
+        avg_score: circleAvg,
+        total_ratings: circleScores.length,
+        friendRatings: circleRejellies,
       };
     });
   }, []);
