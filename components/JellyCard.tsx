@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import CommentsSheet from "@/components/CommentsSheet";
-import ImageViewer from "@/components/ImageViewer";
 import { useToast } from "@/components/Toast";
 import type { JellyRate } from "@/lib/types";
 
@@ -528,7 +527,6 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
   const [showEdit, setShowEdit] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [deleted, setDeleted] = useState(false);
-  const [showViewer, setShowViewer] = useState(false);
   const [localTitle, setLocalTitle] = useState(jelly.title);
   const [localDescription, setLocalDescription] = useState(jelly.description ?? "");
   const [heartPop, setHeartPop] = useState(false);
@@ -540,69 +538,72 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
   const timeAgo = formatTimeAgo(jelly.created_at);
   const username = jelly.profile?.username ?? "usuario";
 
-  const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // ── Pinch-to-zoom ─────────────────────────────────────────────────────
+  // ── Pinch-to-zoom (native listeners so we can preventDefault) ────────
   const [imgScale, setImgScale] = useState(1);
-  const pinchRef = useRef<{
-    initialDist: number;
-    initialScale: number;
-    isPinching: boolean;
-  } | null>(null);
+  const imgScaleRef = useRef(1); // mirror for use inside event listeners
+  const photoContainerRef = useRef<HTMLDivElement>(null);
+  const pinchRef = useRef<{ dist: number; scale: number } | null>(null);
 
-  function getTouchDist(touches: React.TouchList) {
-    const dx = touches[0].clientX - touches[1].clientX;
-    const dy = touches[0].clientY - touches[1].clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
+  useEffect(() => {
+    imgScaleRef.current = imgScale;
+  }, [imgScale]);
 
-  function handlePinchStart(e: React.TouchEvent) {
-    if (e.touches.length !== 2) return;
-    e.stopPropagation();
-    pinchRef.current = {
-      initialDist: getTouchDist(e.touches),
-      initialScale: imgScale,
-      isPinching: true,
+  useEffect(() => {
+    const el = photoContainerRef.current;
+    if (!el) return;
+
+    function dist(t: TouchList) {
+      const dx = t[0].clientX - t[1].clientX;
+      const dy = t[0].clientY - t[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function onTouchStart(e: TouchEvent) {
+      if (e.touches.length === 2) {
+        pinchRef.current = { dist: dist(e.touches), scale: imgScaleRef.current };
+      }
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      if (e.touches.length === 2 && pinchRef.current) {
+        e.preventDefault(); // needs passive:false
+        const ratio = dist(e.touches) / pinchRef.current.dist;
+        const next = Math.min(4, Math.max(1, pinchRef.current.scale * ratio));
+        imgScaleRef.current = next;
+        setImgScale(next);
+      }
+    }
+
+    function onTouchEnd() {
+      if (!pinchRef.current) return;
+      pinchRef.current = null;
+      setImgScale(s => (s < 1.08 ? 1 : s));
+    }
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+    el.addEventListener("touchcancel", onTouchEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
     };
-  }
+  }, []);
 
-  function handlePinchMove(e: React.TouchEvent) {
-    if (!pinchRef.current?.isPinching || e.touches.length !== 2) return;
-    e.stopPropagation();
-    const ratio = getTouchDist(e.touches) / pinchRef.current.initialDist;
-    const next = Math.min(4, Math.max(1, pinchRef.current.initialScale * ratio));
-    setImgScale(next);
-  }
-
-  function handlePinchEnd() {
-    if (!pinchRef.current) return;
-    pinchRef.current = null;
-    // Snap back to 1 if nearly there
-    setImgScale(s => (s < 1.08 ? 1 : s));
-  }
-
+  // ── Double-tap to like (no single-tap action) ─────────────────────────
   const handlePhotoTap = useCallback(() => {
-    // Don't open viewer while zoomed
-    if (imgScale > 1.05) return;
     const now = Date.now();
     const isDouble = now - lastTap.current < 350;
     lastTap.current = now;
-
-    if (isDouble) {
-      // Cancel pending single-tap open
-      if (singleTapTimer.current) clearTimeout(singleTapTimer.current);
-      if (!liked && currentUserId) {
-        doLike();
-        setHeartPop(true);
-        setTimeout(() => setHeartPop(false), 800);
-      }
-    } else {
-      // Delay single-tap to allow double-tap to cancel it
-      singleTapTimer.current = setTimeout(() => {
-        if (jelly.photo_url) setShowViewer(true);
-      }, 360);
+    if (isDouble && !liked && currentUserId) {
+      doLike();
+      setHeartPop(true);
+      setTimeout(() => setHeartPop(false), 800);
     }
-  }, [liked, currentUserId, jelly.photo_url, imgScale]);
+  }, [liked, currentUserId]);
 
   async function doLike() {
     await supabase.from("likes").insert({ user_id: currentUserId, jellyrate_id: jelly.id });
@@ -722,12 +723,9 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
 
       {/* ── Photo ── */}
       <div
+        ref={photoContainerRef}
         className="relative bg-[#f0ede8] select-none overflow-hidden"
         onClick={handlePhotoTap}
-        onTouchStart={handlePinchStart}
-        onTouchMove={handlePinchMove}
-        onTouchEnd={handlePinchEnd}
-        onTouchCancel={handlePinchEnd}
       >
         {jelly.photo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -981,16 +979,7 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
         />
       )}
 
-      {/* ── Image Viewer ── */}
-      {showViewer && jelly.photo_url && (
-        <ImageViewer
-          src={jelly.photo_url}
-          title={jelly.title}
-          score={jelly.score}
-          username={username}
-          onClose={() => setShowViewer(false)}
-        />
-      )}
+
     </article>
   );
 }
