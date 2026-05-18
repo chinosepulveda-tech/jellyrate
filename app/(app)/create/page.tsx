@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
@@ -33,6 +33,8 @@ export default function CreatePage() {
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const [userId, setUserId] = useState<string | null>(null);
+
   const [step, setStep] = useState<Step>("photo");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -43,6 +45,14 @@ export default function CreatePage() {
   const [placeName, setPlaceName] = useState("");
   const [audience, setAudience] = useState<Audience>("all");
   const [error, setError] = useState<string | null>(null);
+
+  // Load user on mount
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setUserId(user.id);
+      else router.push("/login");
+    });
+  }, []);
 
   // Canonical item linking
   type Suggestion = { id: string; title: string; category: string | null; avg_score: number; total_ratings: number };
@@ -108,16 +118,16 @@ export default function CreatePage() {
   }
 
   async function handlePost() {
-    if (!photoFile) return;
+    if (!photoFile || !userId) {
+      setError(!userId ? "Sesión expirada, vuelve a iniciar sesión" : "Sin foto");
+      return;
+    }
     setStep("posting");
     setError(null);
 
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) throw new Error("No autenticado");
-
       const ext = photoFile.name.split(".").pop();
-      const path = `${user.id}/${Date.now()}.${ext}`;
+      const path = `${userId}/${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from("jellyrates")
         .upload(path, photoFile, { contentType: photoFile.type });
@@ -129,7 +139,7 @@ export default function CreatePage() {
         .getPublicUrl(path);
 
       const { error: insertError } = await supabase.from("jellyrates").insert({
-        user_id: user.id,
+        user_id: userId,
         photo_url: publicUrl,
         score,
         title: title || `Mi calificación: ${score}/10`,
