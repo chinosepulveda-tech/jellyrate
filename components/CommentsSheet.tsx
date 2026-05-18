@@ -28,6 +28,8 @@ interface Props {
   currentUserId?: string;
   canonicalId?: string | null;
   onClose: () => void;
+  onCommentAdded?: () => void;
+  onCommentDeleted?: () => void;
 }
 
 function timeAgo(dateStr: string) {
@@ -47,7 +49,7 @@ function ScoreColor(score: number) {
   return "#e8363a";
 }
 
-export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, canonicalId, onClose }: Props) {
+export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, canonicalId, onClose, onCommentAdded, onCommentDeleted }: Props) {
   const rootId = canonicalId ?? jellyId;
   const supabase = createClient();
   const [authorNotes, setAuthorNotes] = useState<AuthorNote[]>([]);
@@ -182,6 +184,7 @@ export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, cano
       const { data: profile } = await supabase
         .from("profiles").select("username, avatar_url").eq("id", currentUserId).single();
       setComments(prev => [...prev, { ...data, profile: profile ?? undefined }]);
+      onCommentAdded?.();
       setText("");
       setTimeout(() => {
         listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
@@ -193,6 +196,7 @@ export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, cano
   async function deleteComment(commentId: string) {
     await supabase.from("comments").delete().eq("id", commentId);
     setComments(prev => prev.filter(c => c.id !== commentId));
+    onCommentDeleted?.();
   }
 
   const isEmpty = authorNotes.length === 0 && comments.length === 0;
