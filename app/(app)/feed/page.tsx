@@ -211,10 +211,10 @@ export default function FeedPage() {
     });
 
     return data.map((j: any) => {
-      // Start from canonical query results
-      const canonicalRatings: CircleRating[] = j.canonical_id
-        ? (canonicalScoresMap[j.canonical_id] ?? [])
-        : [];
+      // Use same key logic as when we stored scores:
+      // canonical_id if set, otherwise own id (for posts with canonical_id=null)
+      const canonicalKey: string = j.canonical_id ?? j.id;
+      const canonicalRatings: CircleRating[] = canonicalScoresMap[canonicalKey] ?? [];
 
       // Merge in same-title posts from this page (dedup by user_id)
       const titleKey = (j.title ?? "").toLowerCase().trim();
