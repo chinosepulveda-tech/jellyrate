@@ -263,8 +263,8 @@ export default function ExplorePage() {
                       </div>
                     )}
                     <div
-                      className="absolute bottom-0 left-0 w-8 h-8 flex items-center justify-center text-xs font-black text-white"
-                      style={{ backgroundColor: ScoreColor(jelly.score), borderTopRightRadius: 8, borderBottomRightRadius: 8 }}
+                      className="absolute top-0 left-0 w-8 h-8 flex items-center justify-center text-xs font-black text-white"
+                      style={{ backgroundColor: "#e8363a", borderBottomRightRadius: 8 }}
                     >
                       {jelly.score}
                     </div>
