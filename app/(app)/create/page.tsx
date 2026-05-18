@@ -44,6 +44,9 @@ export default function CreatePage() {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [placeName, setPlaceName] = useState("");
+  const [placeSuggestions, setPlaceSuggestions] = useState<string[]>([]);
+  const [showPlaceSuggestions, setShowPlaceSuggestions] = useState(false);
+  const placeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [audience, setAudience] = useState<Audience>("all");
   const [error, setError] = useState<string | null>(null);
 
@@ -108,6 +111,44 @@ export default function CreatePage() {
     if (s.category) setCategory(s.category);
     setSuggestions([]);
     setShowSuggestions(false);
+  }
+
+  const searchPlaces = useCallback(async (q: string) => {
+    if (q.length < 3) { setPlaceSuggestions([]); setShowPlaceSuggestions(false); return; }
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1`,
+        { headers: { "Accept-Language": "es", "User-Agent": "JellyRateApp/1.0" } }
+      );
+      const data = await res.json();
+      const names: string[] = data.map((r: any) => {
+        // Build a clean "Name, City, Country" label
+        const addr = r.address ?? {};
+        const parts = [
+          r.name || addr.amenity || addr.shop || addr.tourism,
+          addr.city || addr.town || addr.village || addr.municipality,
+          addr.country,
+        ].filter(Boolean);
+        return [...new Set(parts)].join(", ");
+      }).filter(Boolean);
+      setPlaceSuggestions([...new Set(names)] as string[]);
+      setShowPlaceSuggestions(true);
+    } catch {
+      setPlaceSuggestions([]);
+    }
+  }, []);
+
+  function handlePlaceChange(val: string) {
+    setPlaceName(val);
+    setShowPlaceSuggestions(false);
+    if (placeTimer.current) clearTimeout(placeTimer.current);
+    placeTimer.current = setTimeout(() => searchPlaces(val), 400);
+  }
+
+  function selectPlace(name: string) {
+    setPlaceName(name);
+    setPlaceSuggestions([]);
+    setShowPlaceSuggestions(false);
   }
 
   async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -448,13 +489,37 @@ export default function CreatePage() {
             {/* Place */}
             <div className="flex flex-col gap-2">
               <label className="text-xs font-black text-[#999] uppercase tracking-widest">Lugar (opcional)</label>
-              <input
-                type="text"
-                value={placeName}
-                onChange={(e) => setPlaceName(e.target.value)}
-                placeholder="Nombre del lugar o ciudad"
-                className="w-full bg-white border border-[#e0dbd4] rounded-xl px-4 py-3 text-[#2a2a2a] placeholder:text-[#ccc] focus:border-[#e8363a] transition-colors text-sm"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={placeName}
+                  onChange={(e) => handlePlaceChange(e.target.value)}
+                  onBlur={() => setTimeout(() => setShowPlaceSuggestions(false), 150)}
+                  onFocus={() => placeSuggestions.length > 0 && setShowPlaceSuggestions(true)}
+                  placeholder="Nombre del lugar o ciudad"
+                  className="w-full bg-white border border-[#e0dbd4] rounded-xl px-4 py-3 text-[#2a2a2a] placeholder:text-[#ccc] focus:border-[#e8363a] transition-colors text-sm"
+                  autoComplete="off"
+                />
+                {showPlaceSuggestions && placeSuggestions.length > 0 && (
+                  <ul className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-[#e0dbd4] rounded-xl overflow-hidden shadow-lg">
+                    {placeSuggestions.map((s, i) => (
+                      <li key={i}>
+                        <button
+                          type="button"
+                          onMouseDown={() => selectPlace(s)}
+                          className="w-full text-left px-4 py-3 text-sm text-[#1a1a1a] flex items-center gap-2.5 active:bg-[#fef2f2] hover:bg-[#fef2f2] transition-colors border-b border-[#f5f0eb] last:border-0"
+                        >
+                          <svg width="14" height="14" fill="none" stroke="#e8363a" strokeWidth={2} viewBox="0 0 24 24" className="flex-shrink-0">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                          </svg>
+                          <span className="truncate">{s}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
 
             {error && <p className="text-sm text-[#e8363a] text-center font-semibold">{error}</p>}
