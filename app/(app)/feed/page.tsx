@@ -65,15 +65,29 @@ export default function FeedPage() {
       savedSet = new Set(sd?.map((s: any) => s.jellyrate_id) ?? []);
     }
 
-    return data.map((j: any) => ({
-      ...j,
-      profile: profileMap[j.user_id] ?? null,
-      user_liked: likedSet.has(j.id),
-      user_saved: savedSet.has(j.id),
-      likes_count: j.likes_count ?? 0,
-      comments_count: j.comments_count ?? 0,
-      rejellies_count: j.rejellies_count ?? 0,
-    }));
+    // Fetch community avg scores for all items in this page
+    const canonicalIds = [...new Set(data.map((j: any) => j.canonical_id ?? j.id))];
+    const { data: statsData } = await supabase.rpc("get_item_stats", { canonical_ids: canonicalIds });
+    const statsMap: Record<string, { avg_score: number; total_ratings: number }> = {};
+    (statsData ?? []).forEach((s: any) => {
+      statsMap[s.canonical_key] = { avg_score: Number(s.avg_score), total_ratings: Number(s.total_ratings) };
+    });
+
+    return data.map((j: any) => {
+      const key = j.canonical_id ?? j.id;
+      const stats = statsMap[key];
+      return {
+        ...j,
+        profile: profileMap[j.user_id] ?? null,
+        user_liked: likedSet.has(j.id),
+        user_saved: savedSet.has(j.id),
+        likes_count: j.likes_count ?? 0,
+        comments_count: j.comments_count ?? 0,
+        rejellies_count: j.rejellies_count ?? 0,
+        avg_score: stats?.avg_score ?? j.score,
+        total_ratings: stats?.total_ratings ?? 1,
+      };
+    });
   }, []);
 
   const loadInitial = useCallback(async (uid?: string) => {

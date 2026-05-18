@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
@@ -44,6 +44,61 @@ export default function CreatePage() {
   const [audience, setAudience] = useState<Audience>("all");
   const [error, setError] = useState<string | null>(null);
 
+  // Canonical item linking
+  type Suggestion = { id: string; title: string; category: string | null; avg_score: number; total_ratings: number };
+  const [canonicalId, setCanonicalId] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [linkedItem, setLinkedItem] = useState<Suggestion | null>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const searchCanonicals = useCallback(async (q: string) => {
+    if (q.length < 2) { setSuggestions([]); setShowSuggestions(false); return; }
+    const { data } = await supabase
+      .from("jellyrates")
+      .select("id, title, category, score, canonical_id")
+      .is("canonical_id", null)
+      .ilike("title", `%${q}%`)
+      .limit(5);
+    if (!data?.length) { setSuggestions([]); setShowSuggestions(false); return; }
+    // Get community stats for these canonical posts
+    const ids = data.map((d: any) => d.id);
+    const { data: statsData } = await supabase.rpc("get_item_stats", { canonical_ids: ids });
+    const statsMap: Record<string, { avg_score: number; total_ratings: number }> = {};
+    (statsData ?? []).forEach((s: any) => {
+      statsMap[s.canonical_key] = { avg_score: Number(s.avg_score), total_ratings: Number(s.total_ratings) };
+    });
+    const results: Suggestion[] = data.map((d: any) => ({
+      id: d.id,
+      title: d.title,
+      category: d.category,
+      avg_score: statsMap[d.id]?.avg_score ?? d.score,
+      total_ratings: statsMap[d.id]?.total_ratings ?? 1,
+    }));
+    setSuggestions(results);
+    setShowSuggestions(true);
+  }, [supabase]);
+
+  function handleTitleChange(val: string) {
+    setTitle(val);
+    // Clear link if user edits the title after linking
+    if (linkedItem && val !== linkedItem.title) {
+      setLinkedItem(null);
+      setCanonicalId(null);
+    }
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => searchCanonicals(val), 300);
+  }
+
+  function selectSuggestion(s: Suggestion) {
+    setTitle(s.title);
+    setCanonicalId(s.id);
+    setLinkedItem(s);
+    if (s.category) setCategory(s.category);
+    setSuggestions([]);
+    setShowSuggestions(false);
+  }
+
   function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -84,6 +139,7 @@ export default function CreatePage() {
         place_name: placeName || null,
         audience,
         privacy: "public",
+        canonical_id: canonicalId || null,
       });
 
       if (insertError) throw insertError;
@@ -232,17 +288,81 @@ export default function CreatePage() {
           </div>
 
           <div className="flex flex-col gap-5 px-4 py-5">
-            {/* Title */}
+            {/* Title with autocomplete */}
             <div className="flex flex-col gap-2">
               <label className="text-xs font-black text-[#999] uppercase tracking-widest">Título *</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="¿Qué estás calificando?"
-                maxLength={80}
-                className="w-full bg-white border border-[#e0dbd4] rounded-xl px-4 py-3 text-[#2a2a2a] placeholder:text-[#ccc] focus:border-[#e8363a] transition-colors text-sm"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                  onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                  placeholder="¿Qué estás calificando?"
+                  maxLength={80}
+                  className={`w-full bg-white border rounded-xl px-4 py-3 text-[#2a2a2a] placeholder:text-[#ccc] focus:border-[#e8363a] transition-colors text-sm ${
+                    linkedItem ? "border-[#22c55e] pr-10" : "border-[#e0dbd4]"
+                  }`}
+                />
+                {linkedItem && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#22c55e]">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                    </svg>
+                  </div>
+                )}
+
+                {/* Suggestions dropdown */}
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#e0dbd4] rounded-xl shadow-lg z-50 overflow-hidden">
+                    <p className="text-[10px] font-black text-[#bbb] uppercase tracking-widest px-3 pt-2.5 pb-1">
+                      Ya calificado por la comunidad
+                    </p>
+                    {suggestions.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onMouseDown={() => selectSuggestion(s)}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 active:bg-[#f8f5f2] text-left border-t border-[#f0ede8] first:border-0"
+                      >
+                        <div
+                          className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-white font-black text-sm"
+                          style={{ backgroundColor: ScoreColor(s.avg_score) }}
+                        >
+                          {s.avg_score}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-[#2a2a2a] truncate">{s.title}</p>
+                          <p className="text-xs text-[#bbb]">
+                            {s.total_ratings} {s.total_ratings === 1 ? "nota" : "notas"}
+                            {s.category ? ` · ${s.category}` : ""}
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-black text-[#e8363a] uppercase tracking-wide">Vincular</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Linked item banner */}
+              {linkedItem && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl">
+                  <svg width="14" height="14" fill="none" stroke="#22c55e" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                  </svg>
+                  <p className="text-xs text-[#166534] font-semibold flex-1">
+                    Vinculado · tu nota se promediará con {linkedItem.total_ratings} existente{linkedItem.total_ratings !== 1 ? "s" : ""}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setLinkedItem(null); setCanonicalId(null); }}
+                    className="text-[#16a34a] text-xs font-black"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Category */}

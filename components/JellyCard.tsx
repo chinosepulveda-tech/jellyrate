@@ -356,11 +356,13 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
 
         {/* ── Score badge: top-left ── */}
         <div
-          className="absolute top-0 left-0 flex items-center justify-center"
+          className="absolute top-0 left-0 flex flex-col items-center justify-center"
           style={{
             backgroundColor: "#e8363a",
-            width: 56,
-            height: 56,
+            width: 60,
+            minHeight: 56,
+            paddingBottom: (jelly.total_ratings ?? 1) > 1 ? 6 : 0,
+            paddingTop: (jelly.total_ratings ?? 1) > 1 ? 6 : 0,
             borderBottomRightRadius: 14,
             boxShadow: "3px 3px 10px rgba(0,0,0,0.35)",
           }}
@@ -369,8 +371,15 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
             className="text-2xl font-black text-white leading-none"
             style={{ textShadow: "0 2px 6px rgba(0,0,0,0.4)" }}
           >
-            {jelly.score}
+            {(jelly.total_ratings ?? 1) > 1
+              ? (jelly.avg_score ?? jelly.score)
+              : jelly.score}
           </span>
+          {(jelly.total_ratings ?? 1) > 1 && (
+            <span className="text-[9px] font-bold text-white/80 leading-none mt-0.5">
+              {jelly.total_ratings} notas
+            </span>
+          )}
         </div>
 
         {/* Audience badge */}

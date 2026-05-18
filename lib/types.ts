@@ -27,12 +27,15 @@ export interface JellyRate {
   likes_count: number;
   comments_count: number;
   rejellies_count: number;
+  // canonical item linking
+  canonical_id?: string | null;
+  // community stats (computed from all linked posts)
+  avg_score?: number;
+  total_ratings?: number;
   // joined
   profile?: Profile;
   user_liked?: boolean;
   user_saved?: boolean;
-  friend_avg?: number | null;
-  global_avg?: number | null;
 }
 
 export interface ReJelly {
