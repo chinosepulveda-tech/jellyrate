@@ -165,7 +165,7 @@ export default function ExplorePage() {
                 tab === "posts" ? "bg-[#e8363a] text-white" : "bg-[#f0ede8] text-[#999]"
               }`}
             >
-              Posts
+              JellyRates
             </button>
             <button
               onClick={() => handleTabChange("people")}
