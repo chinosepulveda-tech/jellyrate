@@ -2,29 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const [unreadCount, setUnreadCount] = useState(0);
-  const supabase = createClient();
-
-  useEffect(() => {
-    async function loadUnread() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { count } = await supabase
-        .from("notifications")
-        .select("*", { count: "exact", head: true })
-        .eq("recipient_id", user.id)
-        .eq("read", false);
-
-      setUnreadCount(count ?? 0);
-    }
-    loadUnread();
-  }, [pathname]);
 
   const tabs = [
     {
@@ -57,12 +37,11 @@ export default function BottomNav() {
       ),
     },
     {
-      href: "/activity",
-      label: "Notifs",
-      badge: unreadCount,
+      href: "/messages",
+      label: "Mensajes",
       icon: (active: boolean) => (
         <svg width="24" height="24" fill={active ? "#e8363a" : "none"} stroke={active ? "#e8363a" : "#c8c3bc"} strokeWidth={active ? 2.5 : 1.8} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
         </svg>
       ),
     },
