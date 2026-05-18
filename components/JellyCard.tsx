@@ -400,10 +400,10 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
         )}
       </div>
 
-      {/* ── "Created by" bar ── */}
+      {/* ── "Creado por" bar ── */}
       <div className="bg-[#2a2a2a] px-4 py-2 flex items-center justify-between">
         <p className="text-xs text-[#aaa]">
-          Created by{" "}
+          Creado por{" "}
           <Link href={`/profile/${username}`}>
             <span className="font-black text-white">{username}</span>
           </Link>
