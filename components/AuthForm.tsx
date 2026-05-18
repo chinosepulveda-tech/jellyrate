@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, CSSProperties, ReactNode } from "react";
+import { useState, useEffect, useRef, CSSProperties, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import OnboardingSlides from "@/components/OnboardingSlides";
@@ -187,6 +187,109 @@ function GoogleGlyph({ size = 18 }: { size?: number }) {
   );
 }
 
+// ─── StepBar — progress indicator for signup ─────────────────────────────────
+function StepBar({ step }: { step: 1 | 2 }) {
+  return (
+    <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
+      {[1, 2].map((n) => (
+        <div
+          key={n}
+          style={{
+            flex: 1,
+            height: 4,
+            background: n <= step ? JR.red : JR.beige,
+            border: `1.5px solid ${JR.ink}`,
+            transition: "background 250ms ease",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── username availability status ─────────────────────────────────────────────
+type UsernameStatus = "idle" | "checking" | "available" | "taken" | "short";
+
+function UsernameHint({ status }: { status: UsernameStatus }) {
+  if (status === "idle") return null;
+
+  const configs = {
+    checking: { text: "Verificando...", color: JR.ink, opacity: 0.45 },
+    available: { text: "✓ Disponible", color: JR.teal, opacity: 1 },
+    taken: { text: "✗ Ya está tomado", color: JR.red, opacity: 1 },
+    short: { text: "Mínimo 3 caracteres", color: JR.ink, opacity: 0.45 },
+  };
+
+  const cfg = configs[status];
+  return (
+    <div
+      style={{
+        fontFamily: fontBody,
+        fontWeight: 800,
+        fontSize: 10,
+        letterSpacing: "0.16em",
+        textTransform: "uppercase",
+        color: cfg.color,
+        opacity: cfg.opacity,
+        marginTop: 6,
+      }}
+    >
+      {cfg.text}
+    </div>
+  );
+}
+
+// ─── primary CTA button ───────────────────────────────────────────────────────
+function CTAButton({
+  onClick,
+  disabled,
+  label,
+}: {
+  onClick?: () => void;
+  disabled?: boolean;
+  label: string;
+}) {
+  return (
+    <button
+      type={onClick ? "button" : "submit"}
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        width: "100%",
+        height: 56,
+        background: disabled ? "#ccc" : JR.red,
+        color: disabled ? "#888" : "#fff",
+        border: `2.5px solid ${JR.ink}`,
+        fontFamily: fontDisplay,
+        fontWeight: 900,
+        fontSize: 16,
+        letterSpacing: "0.18em",
+        textTransform: "uppercase",
+        cursor: disabled ? "not-allowed" : "pointer",
+        boxShadow: disabled ? "none" : `4px 4px 0 0 ${JR.ink}`,
+        transform: "translateY(0)",
+        transition: "transform 80ms ease, box-shadow 80ms ease, background 150ms ease",
+        borderRadius: 0,
+      }}
+      onMouseDown={(e) => {
+        if (disabled) return;
+        e.currentTarget.style.transform = "translate(2px, 2px)";
+        e.currentTarget.style.boxShadow = `2px 2px 0 0 ${JR.ink}`;
+      }}
+      onMouseUp={(e) => {
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = `4px 4px 0 0 ${JR.ink}`;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(0)";
+        if (!disabled) e.currentTarget.style.boxShadow = `4px 4px 0 0 ${JR.ink}`;
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
 // ─── AuthForm ─────────────────────────────────────────────────────────────────
 export default function AuthForm({
   initialMode = "login",
@@ -197,51 +300,70 @@ export default function AuthForm({
   const supabase = createClient();
 
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
+  const [signupStep, setSignupStep] = useState<1 | 2>(1);
+
+  // step 1 fields
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // step 2 field
+  const [username, setUsername] = useState("");
+  const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   const isSignup = mode === "signup";
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── submit ────────────────────────────────────────────────────────────────
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
+  // ── username availability check (debounced 450ms) ─────────────────────────
+  useEffect(() => {
+    if (!isSignup || signupStep !== 2) return;
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    const clean = username.trim();
+    if (!clean) { setUsernameStatus("idle"); return; }
+    if (clean.length < 3) { setUsernameStatus("short"); return; }
+
+    setUsernameStatus("checking");
+
+    debounceRef.current = setTimeout(async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("username", clean)
+        .maybeSingle();
+      setUsernameStatus(data ? "taken" : "available");
+    }, 450);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [username, isSignup, signupStep]);
+
+  // ── switch mode → reset signup state ─────────────────────────────────────
+  function switchMode(m: "login" | "signup") {
+    setMode(m);
+    setSignupStep(1);
     setError(null);
+    setUsername("");
+    setUsernameStatus("idle");
+  }
 
+  // ── step 1 submit ─────────────────────────────────────────────────────────
+  async function handleStep1(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
     if (isSignup) {
-      // Auto-generate username from email
-      const autoUsername = email
-        .split("@")[0]
-        .toLowerCase()
-        .replace(/[^a-z0-9_.]/g, "");
-
-      const { error: err } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            username: autoUsername,
-            full_name: name,
-          },
-        },
-      });
-
-      if (err) {
-        setError(err.message);
-        setLoading(false);
-      } else {
-        setShowOnboarding(true);
-      }
+      if (!name.trim()) { setError("Ingresa tu nombre."); return; }
+      if (password.length < 8) { setError("La contraseña debe tener al menos 8 caracteres."); return; }
+      setSignupStep(2);
     } else {
-      const { error: err } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      setLoading(true);
+      const { error: err } = await supabase.auth.signInWithPassword({ email, password });
       if (err) {
         setError("Email o contraseña incorrectos.");
         setLoading(false);
@@ -249,6 +371,32 @@ export default function AuthForm({
         router.push("/feed");
         router.refresh();
       }
+    }
+  }
+
+  // ── step 2 submit (create account) ───────────────────────────────────────
+  async function handleStep2(e: React.FormEvent) {
+    e.preventDefault();
+    if (usernameStatus !== "available") return;
+    setLoading(true);
+    setError(null);
+
+    const { error: err } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          username: username.trim(),
+          full_name: name.trim(),
+        },
+      },
+    });
+
+    if (err) {
+      setError(err.message);
+      setLoading(false);
+    } else {
+      setShowOnboarding(true);
     }
   }
 
@@ -260,7 +408,7 @@ export default function AuthForm({
     });
   }
 
-  // ── Onboarding ────────────────────────────────────────────────────────────
+  // ── onboarding ────────────────────────────────────────────────────────────
   if (showOnboarding) {
     return (
       <OnboardingSlides
@@ -272,7 +420,9 @@ export default function AuthForm({
     );
   }
 
-  // ── render ────────────────────────────────────────────────────────────────
+  // ── shared shell ──────────────────────────────────────────────────────────
+  const isStep2 = isSignup && signupStep === 2;
+
   return (
     <div
       style={{
@@ -290,36 +440,29 @@ export default function AuthForm({
       {/* status row */}
       <div
         style={{
-          padding:
-            "max(44px, calc(20px + env(safe-area-inset-top, 0px))) 28px 16px",
+          padding: "max(44px, calc(20px + env(safe-area-inset-top, 0px))) 28px 16px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           flexShrink: 0,
         }}
       >
-        <Eyebrow dot={JR.red}>Bienvenido</Eyebrow>
-        <Eyebrow color={JR.dark}>
-          {isSignup ? "Crear cuenta" : "Iniciar sesión"}
+        <Eyebrow dot={JR.red}>
+          {isStep2 ? "Elige tu usuario" : "Bienvenido"}
         </Eyebrow>
+        {!isStep2 && (
+          <Eyebrow color={JR.dark}>
+            {isSignup ? "Crear cuenta" : "Iniciar sesión"}
+          </Eyebrow>
+        )}
       </div>
 
       {/* chevron */}
-      <div
-        style={{ ...chevronStrip(JR.beige, JR.cream), height: 24, flexShrink: 0 }}
-      />
+      <div style={{ ...chevronStrip(JR.beige, JR.cream), height: 24, flexShrink: 0 }} />
 
       {/* hero */}
       <div style={{ padding: "24px 28px 14px" }}>
-        {/* wordmark */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            justifyContent: "center",
-            gap: 0,
-          }}
-        >
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center" }}>
           <span
             style={{
               fontFamily: fontDisplay,
@@ -346,7 +489,6 @@ export default function AuthForm({
           </span>
         </div>
 
-        {/* tagline */}
         <div
           style={{
             marginTop: 14,
@@ -365,7 +507,6 @@ export default function AuthForm({
           <span style={{ color: JR.red }}>recomienda tu gente</span>.
         </div>
 
-        {/* social proof */}
         <div
           style={{
             display: "flex",
@@ -403,7 +544,7 @@ export default function AuthForm({
         </div>
       </div>
 
-      {/* form area */}
+      {/* ── form area ── */}
       <div
         style={{
           flex: 1,
@@ -412,233 +553,320 @@ export default function AuthForm({
           flexDirection: "column",
         }}
       >
-        {/* segmented toggle */}
-        <div
-          style={{
-            display: "flex",
-            border: `2.5px solid ${JR.ink}`,
-            background: JR.cream,
-            marginBottom: 16,
-          }}
-        >
-          {(
-            [
-              { key: "login", label: "Entrar" },
-              { key: "signup", label: "Crear cuenta" },
-            ] as const
-          ).map((opt, i) => {
-            const active = mode === opt.key;
-            return (
-              <>
-                {i > 0 && (
-                  <div
-                    key={`div-${i}`}
-                    style={{ width: 2.5, background: JR.ink, flexShrink: 0 }}
-                  />
-                )}
+        {/* segmented toggle — hidden on step 2 */}
+        {!isStep2 && (
+          <div
+            style={{
+              display: "flex",
+              border: `2.5px solid ${JR.ink}`,
+              background: JR.cream,
+              marginBottom: 16,
+            }}
+          >
+            {(
+              [
+                { key: "login", label: "Entrar" },
+                { key: "signup", label: "Crear cuenta" },
+              ] as const
+            ).map((opt, i) => {
+              const active = mode === opt.key;
+              return (
+                <div key={opt.key} style={{ display: "contents" }}>
+                  {i > 0 && (
+                    <div style={{ width: 2.5, background: JR.ink, flexShrink: 0 }} />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => switchMode(opt.key)}
+                    style={{
+                      flex: 1,
+                      height: 40,
+                      border: "none",
+                      background: active ? JR.red : "transparent",
+                      color: active ? "#fff" : JR.ink,
+                      fontFamily: fontDisplay,
+                      fontWeight: 900,
+                      fontSize: 12,
+                      letterSpacing: "0.18em",
+                      textTransform: "uppercase",
+                      cursor: "pointer",
+                      transition: "background 200ms ease, color 200ms ease",
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* step progress bar — only signup */}
+        {isSignup && <StepBar step={signupStep} />}
+
+        {/* ── STEP 1: login / signup base fields ── */}
+        {!isStep2 && (
+          <form onSubmit={handleStep1} style={{ display: "contents" }}>
+            {isSignup && (
+              <FormField label="Nombre" value={name} onChange={setName} placeholder="Tu nombre" />
+            )}
+            <FormField label="Email" value={email} onChange={setEmail} placeholder="tu@email.com" type="email" />
+            <FormField label="Contraseña" value={password} onChange={setPassword} placeholder="••••••••" type="password" />
+
+            {!isSignup && (
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: -6, marginBottom: 4 }}>
                 <button
-                  key={opt.key}
                   type="button"
-                  onClick={() => {
-                    setMode(opt.key);
-                    setError(null);
-                  }}
+                  onClick={() => router.push("/forgot-password")}
                   style={{
-                    flex: 1,
-                    height: 40,
+                    background: "transparent",
                     border: "none",
-                    background: active ? JR.red : "transparent",
-                    color: active ? "#fff" : JR.ink,
-                    fontFamily: fontDisplay,
-                    fontWeight: 900,
-                    fontSize: 12,
-                    letterSpacing: "0.18em",
-                    textTransform: "uppercase",
                     cursor: "pointer",
-                    transition: "background 200ms ease, color 200ms ease",
+                    fontFamily: fontBody,
+                    fontWeight: 800,
+                    fontSize: 10,
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    color: JR.ink,
+                    opacity: 0.6,
+                    padding: 4,
                   }}
                 >
-                  {opt.label}
+                  ¿Olvidaste tu contraseña?
                 </button>
-              </>
-            );
-          })}
-        </div>
+              </div>
+            )}
 
-        {/* fields */}
-        <form onSubmit={handleSubmit} style={{ display: "contents" }}>
-          {isSignup && (
-            <FormField
-              label="Nombre"
-              value={name}
-              onChange={setName}
-              placeholder="Tu nombre"
+            {error && (
+              <div
+                style={{
+                  fontFamily: fontBody,
+                  fontWeight: 900,
+                  fontSize: 10,
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                  color: JR.red,
+                  textAlign: "center",
+                  marginBottom: 8,
+                  padding: "8px 0",
+                }}
+              >
+                {error}
+              </div>
+            )}
+
+            <div style={{ flex: 1, minHeight: 8 }} />
+
+            <CTAButton
+              label={
+                loading ? "Entrando..." : isSignup ? "Siguiente →" : "Entrar"
+              }
+              disabled={loading}
             />
-          )}
-          <FormField
-            label="Email"
-            value={email}
-            onChange={setEmail}
-            placeholder="tu@email.com"
-            type="email"
-          />
-          <FormField
-            label="Contraseña"
-            value={password}
-            onChange={setPassword}
-            placeholder="••••••••"
-            type="password"
-          />
+          </form>
+        )}
 
-          {!isSignup && (
+        {/* ── STEP 2: username picker ── */}
+        {isStep2 && (
+          <form onSubmit={handleStep2} style={{ display: "contents" }}>
+            {/* username field */}
+            <div style={{ marginBottom: 4 }}>
+              <div
+                style={{
+                  fontFamily: fontBody,
+                  fontWeight: 900,
+                  fontSize: 10,
+                  letterSpacing: "0.22em",
+                  textTransform: "uppercase",
+                  color: JR.ink,
+                  opacity: 0.7,
+                  marginBottom: 6,
+                }}
+              >
+                Usuario
+              </div>
+
+              {/* input with @ prefix */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  height: 46,
+                  background: "#fff",
+                  border: `2.5px solid ${
+                    usernameStatus === "available"
+                      ? JR.teal
+                      : usernameStatus === "taken"
+                      ? JR.red
+                      : JR.ink
+                  }`,
+                  transition: "border-color 200ms ease",
+                  boxSizing: "border-box",
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: fontBody,
+                    fontWeight: 700,
+                    fontSize: 15,
+                    color: JR.ink,
+                    opacity: 0.4,
+                    paddingLeft: 14,
+                    paddingRight: 2,
+                    userSelect: "none",
+                  }}
+                >
+                  @
+                </span>
+                <input
+                  value={username}
+                  onChange={(e) =>
+                    setUsername(
+                      e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, "")
+                    )
+                  }
+                  placeholder="tunombre"
+                  autoFocus
+                  maxLength={20}
+                  style={{
+                    flex: 1,
+                    height: "100%",
+                    background: "transparent",
+                    border: "none",
+                    outline: "none",
+                    fontFamily: fontBody,
+                    fontWeight: 700,
+                    fontSize: 15,
+                    color: JR.ink,
+                    letterSpacing: "-0.005em",
+                    paddingRight: 14,
+                  }}
+                />
+              </div>
+
+              <UsernameHint status={usernameStatus} />
+
+              <div
+                style={{
+                  fontFamily: fontBody,
+                  fontWeight: 600,
+                  fontSize: 10,
+                  color: JR.ink,
+                  opacity: 0.4,
+                  marginTop: 6,
+                  letterSpacing: "0.04em",
+                }}
+              >
+                Solo letras, números, puntos y guiones bajos
+              </div>
+            </div>
+
+            {error && (
+              <div
+                style={{
+                  fontFamily: fontBody,
+                  fontWeight: 900,
+                  fontSize: 10,
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                  color: JR.red,
+                  textAlign: "center",
+                  padding: "8px 0",
+                }}
+              >
+                {error}
+              </div>
+            )}
+
+            <div style={{ flex: 1, minHeight: 16 }} />
+
+            <CTAButton
+              label={loading ? "Creando cuenta..." : "Crear cuenta"}
+              disabled={
+                loading ||
+                usernameStatus !== "available"
+              }
+            />
+
+            {/* back link */}
+            <button
+              type="button"
+              onClick={() => { setSignupStep(1); setError(null); }}
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: fontBody,
+                fontWeight: 800,
+                fontSize: 10,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                color: JR.ink,
+                opacity: 0.5,
+                padding: "12px 0 4px",
+                alignSelf: "center",
+              }}
+            >
+              ← Volver
+            </button>
+          </form>
+        )}
+
+        {/* divider + Google — solo en step 1 */}
+        {!isStep2 && (
+          <>
             <div
               style={{
                 display: "flex",
-                justifyContent: "flex-end",
-                marginTop: -6,
-                marginBottom: 4,
+                alignItems: "center",
+                gap: 12,
+                margin: "14px 0 12px",
               }}
             >
-              <button
-                type="button"
-                onClick={() => router.push("/forgot-password")}
+              <div style={{ flex: 1, height: 2, background: JR.beige }} />
+              <div
                 style={{
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
                   fontFamily: fontBody,
-                  fontWeight: 800,
+                  fontWeight: 900,
                   fontSize: 10,
                   letterSpacing: "0.2em",
                   textTransform: "uppercase",
                   color: JR.ink,
-                  opacity: 0.6,
-                  padding: 4,
+                  opacity: 0.5,
                 }}
               >
-                ¿Olvidaste tu contraseña?
-              </button>
+                o
+              </div>
+              <div style={{ flex: 1, height: 2, background: JR.beige }} />
             </div>
-          )}
 
-          {error && (
-            <div
+            <button
+              type="button"
+              onClick={handleGoogle}
               style={{
-                fontFamily: fontBody,
+                width: "100%",
+                height: 52,
+                background: "#fff",
+                color: JR.ink,
+                border: `2.5px solid ${JR.ink}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 12,
+                cursor: "pointer",
+                fontFamily: fontDisplay,
                 fontWeight: 900,
-                fontSize: 10,
+                fontSize: 13,
                 letterSpacing: "0.16em",
                 textTransform: "uppercase",
-                color: JR.red,
-                textAlign: "center",
-                marginBottom: 8,
-                padding: "8px 0",
+                borderRadius: 0,
               }}
             >
-              {error}
-            </div>
-          )}
-
-          <div style={{ flex: 1, minHeight: 8 }} />
-
-          {/* primary CTA */}
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: "100%",
-              height: 56,
-              background: loading ? "#c0282b" : JR.red,
-              color: "#fff",
-              border: `2.5px solid ${JR.ink}`,
-              fontFamily: fontDisplay,
-              fontWeight: 900,
-              fontSize: 16,
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              cursor: loading ? "not-allowed" : "pointer",
-              boxShadow: `4px 4px 0 0 ${JR.ink}`,
-              transform: "translateY(0)",
-              transition: "transform 80ms ease, box-shadow 80ms ease",
-              borderRadius: 0,
-              opacity: loading ? 0.7 : 1,
-            }}
-            onMouseDown={(e) => {
-              if (loading) return;
-              e.currentTarget.style.transform = "translate(2px, 2px)";
-              e.currentTarget.style.boxShadow = `2px 2px 0 0 ${JR.ink}`;
-            }}
-            onMouseUp={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = `4px 4px 0 0 ${JR.ink}`;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = `4px 4px 0 0 ${JR.ink}`;
-            }}
-          >
-            {loading
-              ? isSignup
-                ? "Creando cuenta..."
-                : "Entrando..."
-              : isSignup
-              ? "Crear cuenta"
-              : "Entrar"}
-          </button>
-        </form>
-
-        {/* divider */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            margin: "14px 0 12px",
-          }}
-        >
-          <div style={{ flex: 1, height: 2, background: JR.beige }} />
-          <div
-            style={{
-              fontFamily: fontBody,
-              fontWeight: 900,
-              fontSize: 10,
-              letterSpacing: "0.2em",
-              textTransform: "uppercase",
-              color: JR.ink,
-              opacity: 0.5,
-            }}
-          >
-            o
-          </div>
-          <div style={{ flex: 1, height: 2, background: JR.beige }} />
-        </div>
-
-        {/* Google */}
-        <button
-          type="button"
-          onClick={handleGoogle}
-          style={{
-            width: "100%",
-            height: 52,
-            background: "#fff",
-            color: JR.ink,
-            border: `2.5px solid ${JR.ink}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 12,
-            cursor: "pointer",
-            fontFamily: fontDisplay,
-            fontWeight: 900,
-            fontSize: 13,
-            letterSpacing: "0.16em",
-            textTransform: "uppercase",
-            borderRadius: 0,
-          }}
-        >
-          <GoogleGlyph />
-          <span>Continuar con Google</span>
-        </button>
+              <GoogleGlyph />
+              <span>Continuar con Google</span>
+            </button>
+          </>
+        )}
 
         {/* footer */}
         <div
@@ -655,17 +883,11 @@ export default function AuthForm({
           }}
         >
           Al continuar aceptas los{" "}
-          <a
-            href="/terms"
-            style={{ textDecoration: "underline", color: "inherit" }}
-          >
+          <a href="/terms" style={{ textDecoration: "underline", color: "inherit" }}>
             Términos
           </a>{" "}
           y la{" "}
-          <a
-            href="/privacy"
-            style={{ textDecoration: "underline", color: "inherit" }}
-          >
+          <a href="/privacy" style={{ textDecoration: "underline", color: "inherit" }}>
             Política de Privacidad
           </a>
           .
