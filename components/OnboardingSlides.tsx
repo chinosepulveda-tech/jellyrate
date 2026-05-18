@@ -315,13 +315,13 @@ function Slide1() {
     >
       <div
         style={{
-          padding: "20px 28px 16px",
+          padding: "max(52px, calc(20px + env(safe-area-inset-top, 0px))) 28px 16px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
         }}
       >
-        <Eyebrow dot={JR.red}>Bienvenido</Eyebrow>
+        <Eyebrow dot={JR.red}>Hola</Eyebrow>
         <Eyebrow color={JR.ink}>01 / 04</Eyebrow>
       </div>
 
@@ -729,7 +729,7 @@ function Slide3() {
     >
       <div
         style={{
-          padding: "20px 28px 16px",
+          padding: "max(52px, calc(20px + env(safe-area-inset-top, 0px))) 28px 16px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -918,7 +918,7 @@ function Slide4() {
     >
       <div
         style={{
-          padding: "20px 28px 16px",
+          padding: "max(52px, calc(20px + env(safe-area-inset-top, 0px))) 28px 16px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -1230,7 +1230,7 @@ export default function OnboardingSlides({ onComplete }: { onComplete: () => voi
             onClick={finish}
             style={{
               position: "absolute",
-              top: 18,
+              top: "max(54px, calc(18px + env(safe-area-inset-top, 0px)))",
               right: 22,
               background: "transparent",
               border: "none",
@@ -1239,7 +1239,7 @@ export default function OnboardingSlides({ onComplete }: { onComplete: () => voi
               fontSize: 11,
               letterSpacing: "0.22em",
               textTransform: "uppercase",
-              color: JR.ink,
+              color: idx === 1 ? "#fff" : JR.ink,
               opacity: 0.55,
               cursor: "pointer",
               padding: 6,
