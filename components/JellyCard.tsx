@@ -182,6 +182,7 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
   const [saved, setSaved] = useState(jelly.user_saved ?? false);
   const [showRejelly, setShowRejelly] = useState(false);
   const [rejellyScore, setRejellyScore] = useState(7);
+  const [rejellyComment, setRejellyComment] = useState("");
   const [rejellyDone, setRejellyDone] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showActions, setShowActions] = useState(false);
@@ -256,9 +257,11 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
       user_id: currentUserId,
       jellyrate_id: jelly.id,
       score: rejellyScore,
+      comment: rejellyComment.trim() || null,
     });
     setShowRejelly(false);
     setRejellyDone(true);
+    setRejellyComment("");
     toast.show(`ReJelly ${rejellyScore}/10 enviado`, "★", "success");
     setRejellies(r => r + 1);
   }
@@ -472,13 +475,22 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
           <p className="text-xs font-black text-[#2a2a2a] mb-3 uppercase tracking-wide">
             Tu nota para <span className="text-[#e8363a]">{jelly.title}</span>
           </p>
-          <div className="flex items-center gap-4 mb-4">
+          <div className="flex items-center gap-4 mb-3">
             <span className="text-4xl font-black w-10 text-center" style={{ color: ScoreColor(rejellyScore) }}>
               {rejellyScore}
             </span>
             <input type="range" min={1} max={10} value={rejellyScore}
               onChange={e => setRejellyScore(Number(e.target.value))} className="flex-1" />
           </div>
+          {/* Optional comment */}
+          <textarea
+            value={rejellyComment}
+            onChange={e => setRejellyComment(e.target.value)}
+            placeholder="Agrega un comentario... (opcional)"
+            maxLength={300}
+            rows={2}
+            className="w-full bg-white rounded-xl px-3 py-2 text-sm text-[#2a2a2a] placeholder:text-[#bbb] outline-none border border-[#e8e3dd] resize-none mb-3"
+          />
           <div className="flex gap-2">
             <button onClick={() => setShowRejelly(false)}
               className="flex-1 py-2.5 rounded-xl border border-[#e0dbd4] text-xs font-bold text-[#999]">

@@ -13,10 +13,12 @@ interface Comment {
 }
 
 interface AuthorNote {
+  id: string;
   user_id: string;
-  text: string;
+  text?: string;           // optional — rejellies without comment have none
   created_at: string;
   score: number;
+  isRejelly?: boolean;
   profile?: { username: string; avatar_url: string | null };
 }
 
@@ -97,23 +99,49 @@ export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, cano
 
     const groupIds = groupPosts?.map((p: any) => p.id) ?? [rootId];
 
-    // Fetch profiles for post authors
-    const authorIds = [...new Set((groupPosts ?? []).map((p: any) => p.user_id))];
+    // Fetch rejellies for all posts in the group
+    const { data: rejellyRows } = await supabase
+      .from("rejellies")
+      .select("id, user_id, score, comment, created_at")
+      .in("jellyrate_id", groupIds);
+
+    // Collect all user IDs (post authors + rejelly authors)
+    const authorIds = [...new Set([
+      ...(groupPosts ?? []).map((p: any) => p.user_id),
+      ...(rejellyRows ?? []).map((r: any) => r.user_id),
+    ])];
     const { data: authorProfiles } = await supabase
       .from("profiles").select("id, username, avatar_url").in("id", authorIds);
     const apm: Record<string, any> = {};
     authorProfiles?.forEach((p: any) => { apm[p.id] = p; });
 
-    // Build author notes from descriptions
-    const notes: AuthorNote[] = (groupPosts ?? [])
+    // Build author notes from jellyrate descriptions
+    const fromPosts: AuthorNote[] = (groupPosts ?? [])
       .filter((p: any) => p.description?.trim())
       .map((p: any) => ({
+        id: `post-${p.id}`,
         user_id: p.user_id,
         text: p.description,
         score: p.score,
         created_at: p.created_at,
         profile: apm[p.user_id],
       }));
+
+    // Build entries from rejellies (always shown, comment optional)
+    const fromRejellies: AuthorNote[] = (rejellyRows ?? []).map((r: any) => ({
+      id: `rejelly-${r.id}`,
+      user_id: r.user_id,
+      text: r.comment?.trim() || undefined,
+      score: r.score,
+      created_at: r.created_at,
+      isRejelly: true,
+      profile: apm[r.user_id],
+    }));
+
+    // Merge and sort chronologically
+    const notes: AuthorNote[] = [...fromPosts, ...fromRejellies]
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
     setAuthorNotes(notes);
 
     // Fetch all comments for the canonical group
@@ -206,9 +234,9 @@ export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, cano
             </div>
           ) : (
             <>
-              {/* Author notes — descriptions from each creator */}
-              {authorNotes.map((note, i) => (
-                <div key={`note-${i}`} className="flex items-start gap-3">
+              {/* Ratings — author notes + rejellies */}
+              {authorNotes.map((note) => (
+                <div key={note.id} className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-full bg-[#f0ede8] overflow-hidden flex items-center justify-center font-black text-sm text-[#bbb] flex-shrink-0">
                     {note.profile?.avatar_url ? (
                       <Image src={note.profile.avatar_url} alt="" width={36} height={36} className="object-cover" />
@@ -228,9 +256,16 @@ export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, cano
                       >
                         {note.score}/10
                       </span>
+                      {note.isRejelly && (
+                        <span className="text-[9px] font-bold text-[#f59e0b] uppercase tracking-wide">rejelly</span>
+                      )}
                       <span className="text-[10px] text-[#bbb]">{timeAgo(note.created_at)}</span>
                     </div>
-                    <p className="text-sm text-[#2a2a2a] mt-0.5 leading-snug">{note.text}</p>
+                    {note.text ? (
+                      <p className="text-sm text-[#2a2a2a] mt-0.5 leading-snug">{note.text}</p>
+                    ) : (
+                      <p className="text-xs text-[#bbb] mt-0.5 italic">Sin comentario</p>
+                    )}
                   </div>
                 </div>
               ))}
