@@ -874,7 +874,7 @@ function FriendRow({
   note: string;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "7px 0" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "4px 0" }}>
       <Avatar initials={initials} color={color} size={38} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
@@ -930,10 +930,10 @@ function Slide4() {
       <div
         style={{
           flex: 1,
-          padding: "14px 22px 16px",
+          padding: "12px 22px 8px",
           display: "flex",
           flexDirection: "column",
-          gap: 8,
+          gap: 6,
           overflow: "hidden",
         }}
       >
@@ -996,7 +996,7 @@ function Slide4() {
           </div>
 
           <div style={{ position: "relative" }}>
-            <PhotoPlaceholder label="foto del lugar" height={100} tone="#d9bfa3" />
+            <PhotoPlaceholder label="foto del lugar" height={80} tone="#d9bfa3" />
             <div style={{ position: "absolute", top: -18, right: 14, zIndex: 2 }}>
               <JellyBadge color={JR.red} size={86} rotate={-7}>
                 <div
