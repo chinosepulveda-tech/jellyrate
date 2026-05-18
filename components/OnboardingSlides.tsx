@@ -17,6 +17,8 @@ const fontDisplay = "var(--font-archivo-black), 'Archivo Black', system-ui, sans
 const fontBody = "var(--font-archivo), 'Archivo', 'Helvetica Neue', system-ui, sans-serif";
 const fontMono = "'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace";
 
+const CONTROLS_H = 128;
+
 // ─── chevron pattern ─────────────────────────────────────────────────────────
 function chevronStrip(color = JR.beige, bg = JR.cream): CSSProperties {
   return {
@@ -216,39 +218,22 @@ function JellyBadge({
       style={{
         width: size,
         height: size,
-        position: "relative",
+        borderRadius: "50%",
+        background: color,
+        border: `3.5px solid ${JR.ink}`,
+        boxSizing: "border-box",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexDirection: "column",
+        color: "#fff",
+        textAlign: "center",
+        padding: "0 14%",
         transform: `rotate(${rotate}deg)`,
         flexShrink: 0,
       }}
     >
-      <svg
-        viewBox="0 0 100 100"
-        width="100%"
-        height="100%"
-        style={{ position: "absolute", inset: 0 }}
-      >
-        <path
-          d="M50 4 C68 4 78 12 84 22 C92 32 96 42 96 52 C96 64 90 76 80 84 C70 92 60 96 50 96 C40 96 28 92 18 84 C8 76 4 64 4 52 C4 42 8 32 16 22 C22 12 32 4 50 4 Z"
-          fill={color}
-          stroke={JR.ink}
-          strokeWidth="3.5"
-        />
-      </svg>
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexDirection: "column",
-          color: "#fff",
-          textAlign: "center",
-          padding: "0 14%",
-        }}
-      >
-        {children}
-      </div>
+      {children}
     </div>
   );
 }
@@ -887,7 +872,7 @@ function FriendRow({
   note: string;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "7px 0" }}>
       <Avatar initials={initials} color={color} size={38} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
@@ -944,10 +929,10 @@ function Slide4() {
       <div
         style={{
           flex: 1,
-          padding: "22px 22px 24px",
+          padding: "18px 22px 22px",
           display: "flex",
           flexDirection: "column",
-          gap: 14,
+          gap: 12,
           overflow: "hidden",
         }}
       >
@@ -955,7 +940,7 @@ function Slide4() {
           style={{
             fontFamily: fontDisplay,
             fontWeight: 900,
-            fontSize: 30,
+            fontSize: 26,
             lineHeight: 0.95,
             letterSpacing: "-0.035em",
             color: JR.ink,
@@ -1010,7 +995,7 @@ function Slide4() {
           </div>
 
           <div style={{ position: "relative" }}>
-            <PhotoPlaceholder label="foto del lugar" height={154} tone="#d9bfa3" />
+            <PhotoPlaceholder label="foto del lugar" height={130} tone="#d9bfa3" />
             <div style={{ position: "absolute", top: -18, right: 14, zIndex: 2 }}>
               <JellyBadge color={JR.red} size={86} rotate={-7}>
                 <div
@@ -1038,7 +1023,7 @@ function Slide4() {
             </div>
           </div>
 
-          <div style={{ padding: "12px 14px" }}>
+          <div style={{ padding: "10px 14px 12px" }}>
             <div
               style={{ fontFamily: fontDisplay, fontSize: 20, letterSpacing: "-0.03em", color: JR.ink }}
             >
@@ -1120,9 +1105,9 @@ export default function OnboardingSlides({ onComplete }: { onComplete: () => voi
   const [dragX, setDragX] = useState(0);
   const startX = useRef<number | null>(null);
 
-  // Dimensions — fill the viewport, capped at 390px wide
   const W = 390;
-  const H = 760;
+  const H = 812; // matches iOS frame inner body height
+  const slideAreaH = H - CONTROLS_H;
 
   const last = SLIDES.length - 1;
 
@@ -1138,7 +1123,7 @@ export default function OnboardingSlides({ onComplete }: { onComplete: () => voi
     onComplete();
   };
 
-  // Pointer / touch swipe
+  // Pointer / touch swipe — on slide area only
   const onDown = (e: React.MouseEvent | React.TouchEvent) => {
     startX.current = "touches" in e ? e.touches[0].clientX : e.clientX;
   };
@@ -1185,84 +1170,94 @@ export default function OnboardingSlides({ onComplete }: { onComplete: () => voi
         justifyContent: "center",
       }}
     >
-      {/* slide container — 390×760, centered */}
+      {/* outer shell — flex column so controls never overlap slides */}
       <div
         style={{
           width: W,
           height: H,
           background: JR.cream,
-          position: "relative",
-          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
           userSelect: "none",
-          touchAction: "pan-y",
           fontFamily: fontBody,
           color: JR.ink,
         }}
-        onMouseDown={onDown}
-        onMouseMove={onMove}
-        onMouseUp={onUp}
-        onMouseLeave={onUp}
-        onTouchStart={onDown}
-        onTouchMove={onMove}
-        onTouchEnd={onUp}
       >
-        {/* slide rail */}
+        {/* ── slide area (swipeable) ── */}
         <div
           style={{
-            display: "flex",
-            width: W * SLIDES.length,
-            height: "100%",
-            transform: `translateX(${translate}px)`,
-            transition: dragX === 0 ? "transform 380ms cubic-bezier(.32,.72,.28,1)" : "none",
+            width: W,
+            height: slideAreaH,
+            position: "relative",
+            overflow: "hidden",
+            flexShrink: 0,
+            touchAction: "pan-y",
           }}
+          onMouseDown={onDown}
+          onMouseMove={onMove}
+          onMouseUp={onUp}
+          onMouseLeave={onUp}
+          onTouchStart={onDown}
+          onTouchMove={onMove}
+          onTouchEnd={onUp}
         >
-          {SLIDES.map((s) => {
-            const C = s.component;
-            return (
-              <div key={s.id} style={{ width: W, height: H, flexShrink: 0 }}>
-                <C />
-              </div>
-            );
-          })}
+          {/* slide rail */}
+          <div
+            style={{
+              display: "flex",
+              width: W * SLIDES.length,
+              height: "100%",
+              transform: `translateX(${translate}px)`,
+              transition: dragX === 0 ? "transform 380ms cubic-bezier(.32,.72,.28,1)" : "none",
+            }}
+          >
+            {SLIDES.map((s) => {
+              const C = s.component;
+              return (
+                <div key={s.id} style={{ width: W, height: "100%", flexShrink: 0 }}>
+                  <C />
+                </div>
+              );
+            })}
+          </div>
+
+          {/* skip — anchored top-right over the slide */}
+          <button
+            onClick={finish}
+            style={{
+              position: "absolute",
+              top: 18,
+              right: 22,
+              background: "transparent",
+              border: "none",
+              fontFamily: fontBody,
+              fontWeight: 800,
+              fontSize: 11,
+              letterSpacing: "0.22em",
+              textTransform: "uppercase",
+              color: JR.ink,
+              opacity: 0.55,
+              cursor: "pointer",
+              padding: 6,
+              zIndex: 5,
+            }}
+          >
+            Saltar
+          </button>
         </div>
 
-        {/* skip — top right */}
-        <button
-          onClick={finish}
-          style={{
-            position: "absolute",
-            top: 22,
-            right: 80,
-            background: "transparent",
-            border: "none",
-            fontFamily: fontBody,
-            fontWeight: 800,
-            fontSize: 11,
-            letterSpacing: "0.22em",
-            textTransform: "uppercase",
-            color: JR.ink,
-            opacity: 0.55,
-            cursor: "pointer",
-            padding: 6,
-          }}
-        >
-          Saltar
-        </button>
-
-        {/* bottom controls */}
+        {/* ── controls bar — own row, never overlaps ── */}
         <div
           style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            padding: "0 24px 28px",
+            height: CONTROLS_H,
+            flexShrink: 0,
+            padding: "20px 24px 24px",
             boxSizing: "border-box",
             display: "flex",
             flexDirection: "column",
-            gap: 18,
-            background: `linear-gradient(180deg, transparent 0%, ${JR.cream} 38%)`,
-            paddingTop: 56,
+            gap: 16,
+            background: JR.cream,
+            borderTop: `1.5px solid ${JR.beige}`,
           }}
         >
           {/* dots */}
@@ -1289,13 +1284,13 @@ export default function OnboardingSlides({ onComplete }: { onComplete: () => voi
             onClick={goNext}
             style={{
               width: "100%",
-              height: 60,
+              height: 56,
               background: JR.red,
               color: "#fff",
               border: `2.5px solid ${JR.ink}`,
               fontFamily: fontDisplay,
               fontWeight: 900,
-              fontSize: 18,
+              fontSize: 17,
               letterSpacing: "0.18em",
               textTransform: "uppercase",
               cursor: "pointer",
