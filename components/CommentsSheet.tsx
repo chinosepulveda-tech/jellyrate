@@ -12,6 +12,14 @@ interface Comment {
   profile?: { username: string; avatar_url: string | null };
 }
 
+interface AuthorNote {
+  user_id: string;
+  text: string;
+  created_at: string;
+  score: number;
+  profile?: { username: string; avatar_url: string | null };
+}
+
 interface Props {
   jellyId: string;
   jellyTitle: string;
@@ -30,47 +38,96 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(hrs / 24)}d`;
 }
 
+function ScoreColor(score: number) {
+  if (score >= 8) return "#22c55e";
+  if (score >= 6) return "#f59e0b";
+  if (score >= 4) return "#f97316";
+  return "#e8363a";
+}
+
 export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, canonicalId, onClose }: Props) {
-  // The "root" ID for this canonical group — comments are always saved/read here
   const rootId = canonicalId ?? jellyId;
   const supabase = createClient();
+  const [authorNotes, setAuthorNotes] = useState<AuthorNote[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [sheetHeight, setSheetHeight] = useState("72dvh");
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
+  // Adjust sheet height when keyboard opens (mobile)
+  useEffect(() => {
+    function handleResize() {
+      const vv = (window as any).visualViewport;
+      if (vv) {
+        const available = vv.height;
+        const total = window.innerHeight;
+        const keyboardHeight = total - available;
+        if (keyboardHeight > 100) {
+          // Keyboard is open — shrink sheet so input stays visible
+          setSheetHeight(`${Math.round(available * 0.92)}px`);
+        } else {
+          setSheetHeight("72dvh");
+        }
+      }
+    }
+    const vv = (window as any).visualViewport;
+    if (vv) {
+      vv.addEventListener("resize", handleResize);
+      return () => vv.removeEventListener("resize", handleResize);
+    }
+  }, []);
+
   useEffect(() => {
     loadComments();
-    setTimeout(() => inputRef.current?.focus(), 300);
-    // Prevent body scroll
+    setTimeout(() => inputRef.current?.focus(), 350);
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
   }, [jellyId]);
 
   async function loadComments() {
-    // Fetch all post IDs in this canonical group (root + all linked posts)
+    // Fetch all posts in canonical group
     const { data: groupPosts } = await supabase
       .from("jellyrates")
-      .select("id")
+      .select("id, user_id, description, score, created_at")
       .or(`id.eq.${rootId},canonical_id.eq.${rootId}`);
+
     const groupIds = groupPosts?.map((p: any) => p.id) ?? [rootId];
 
+    // Fetch profiles for post authors
+    const authorIds = [...new Set((groupPosts ?? []).map((p: any) => p.user_id))];
+    const { data: authorProfiles } = await supabase
+      .from("profiles").select("id, username, avatar_url").in("id", authorIds);
+    const apm: Record<string, any> = {};
+    authorProfiles?.forEach((p: any) => { apm[p.id] = p; });
+
+    // Build author notes from descriptions
+    const notes: AuthorNote[] = (groupPosts ?? [])
+      .filter((p: any) => p.description?.trim())
+      .map((p: any) => ({
+        user_id: p.user_id,
+        text: p.description,
+        score: p.score,
+        created_at: p.created_at,
+        profile: apm[p.user_id],
+      }));
+    setAuthorNotes(notes);
+
+    // Fetch all comments for the canonical group
     const { data } = await supabase
       .from("comments")
       .select("id, user_id, text, created_at")
       .in("jellyrate_id", groupIds)
       .order("created_at", { ascending: true })
-      .limit(100);
+      .limit(200);
 
     if (data && data.length > 0) {
       const uids = [...new Set(data.map((c: any) => c.user_id))];
       const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, username, avatar_url")
-        .in("id", uids);
+        .from("profiles").select("id, username, avatar_url").in("id", uids);
       const pm: Record<string, any> = {};
       profiles?.forEach((p: any) => { pm[p.id] = p; });
       setComments(data.map((c: any) => ({ ...c, profile: pm[c.user_id] })));
@@ -110,17 +167,22 @@ export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, cano
     setComments(prev => prev.filter(c => c.id !== commentId));
   }
 
+  const isEmpty = authorNotes.length === 0 && comments.length === 0;
+
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — lower z-index */}
       <div
-        className="fixed inset-0 bg-black/40 z-50 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+        style={{ zIndex: 200 }}
         onClick={onClose}
       />
 
-      {/* Sheet */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-50 bg-white rounded-t-3xl shadow-2xl flex flex-col"
-        style={{ maxHeight: "80dvh" }}>
+      {/* Sheet — higher z-index, always above backdrop */}
+      <div
+        className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white rounded-t-3xl shadow-2xl flex flex-col"
+        style={{ zIndex: 201, height: sheetHeight, transition: "height 0.2s ease" }}
+      >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-2 flex-shrink-0">
           <div className="w-10 h-1 rounded-full bg-[#e0dbd4]" />
@@ -137,52 +199,94 @@ export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, cano
         </div>
 
         {/* Comments list */}
-        <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-4">
+        <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-4 min-h-0">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="w-6 h-6 border-2 border-[#e8363a] border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : comments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 gap-2">
-              <div className="w-12 h-12 rounded-2xl bg-[#f5f2ee] flex items-center justify-center">
-                <svg width="22" height="22" fill="none" stroke="#ccc" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z" />
-                </svg>
-              </div>
-              <p className="text-xs font-black text-[#bbb] uppercase tracking-widest text-center">
-                Sin comentarios aún
-              </p>
-              <p className="text-xs text-[#ccc] text-center">¡Sé el primero en comentar!</p>
-            </div>
           ) : (
-            comments.map(comment => (
-              <div key={comment.id} className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full bg-[#f0ede8] overflow-hidden flex items-center justify-center font-black text-sm text-[#bbb] flex-shrink-0">
-                  {comment.profile?.avatar_url ? (
-                    <Image src={comment.profile.avatar_url} alt="" width={36} height={36} className="object-cover" />
-                  ) : (
-                    (comment.profile?.username?.[0] ?? "?").toUpperCase()
+            <>
+              {/* Author notes — descriptions from each creator */}
+              {authorNotes.map((note, i) => (
+                <div key={`note-${i}`} className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-full bg-[#f0ede8] overflow-hidden flex items-center justify-center font-black text-sm text-[#bbb] flex-shrink-0">
+                    {note.profile?.avatar_url ? (
+                      <Image src={note.profile.avatar_url} alt="" width={36} height={36} className="object-cover" />
+                    ) : (
+                      (note.profile?.username?.[0] ?? "?").toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-black text-[#5bbcb3] uppercase tracking-wide">
+                        {note.profile?.username ?? "usuario"}
+                      </span>
+                      {/* Score chip */}
+                      <span
+                        className="text-[10px] font-black text-white px-1.5 py-0.5 rounded-md"
+                        style={{ backgroundColor: ScoreColor(note.score) }}
+                      >
+                        {note.score}/10
+                      </span>
+                      <span className="text-[10px] text-[#bbb]">{timeAgo(note.created_at)}</span>
+                    </div>
+                    <p className="text-sm text-[#2a2a2a] mt-0.5 leading-snug">{note.text}</p>
+                  </div>
+                </div>
+              ))}
+
+              {/* Divider between author notes and comments */}
+              {authorNotes.length > 0 && comments.length > 0 && (
+                <div className="flex items-center gap-2 py-1">
+                  <div className="flex-1 h-px bg-[#f0ede8]" />
+                  <span className="text-[10px] text-[#ccc] font-bold uppercase tracking-widest">Comentarios</span>
+                  <div className="flex-1 h-px bg-[#f0ede8]" />
+                </div>
+              )}
+
+              {/* Regular comments */}
+              {comments.map(comment => (
+                <div key={comment.id} className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-full bg-[#f0ede8] overflow-hidden flex items-center justify-center font-black text-sm text-[#bbb] flex-shrink-0">
+                    {comment.profile?.avatar_url ? (
+                      <Image src={comment.profile.avatar_url} alt="" width={36} height={36} className="object-cover" />
+                    ) : (
+                      (comment.profile?.username?.[0] ?? "?").toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xs font-black text-[#5bbcb3] uppercase tracking-wide">
+                        {comment.profile?.username ?? "usuario"}
+                      </span>
+                      <span className="text-[10px] text-[#bbb]">{timeAgo(comment.created_at)}</span>
+                    </div>
+                    <p className="text-sm text-[#2a2a2a] mt-0.5 leading-snug">{comment.text}</p>
+                  </div>
+                  {comment.user_id === currentUserId && (
+                    <button onClick={() => deleteComment(comment.id)}
+                      className="flex-shrink-0 text-[#ddd] active:text-[#e8363a] transition-colors mt-1">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                      </svg>
+                    </button>
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-xs font-black text-[#5bbcb3] uppercase tracking-wide">
-                      {comment.profile?.username ?? "usuario"}
-                    </span>
-                    <span className="text-[10px] text-[#bbb]">{timeAgo(comment.created_at)}</span>
-                  </div>
-                  <p className="text-sm text-[#2a2a2a] mt-0.5 leading-snug">{comment.text}</p>
-                </div>
-                {comment.user_id === currentUserId && (
-                  <button onClick={() => deleteComment(comment.id)}
-                    className="flex-shrink-0 text-[#ddd] hover:text-[#e8363a] transition-colors mt-1">
-                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+              ))}
+
+              {/* Empty state — only if no author notes AND no comments */}
+              {isEmpty && (
+                <div className="flex flex-col items-center justify-center py-8 gap-2">
+                  <div className="w-12 h-12 rounded-2xl bg-[#f5f2ee] flex items-center justify-center">
+                    <svg width="22" height="22" fill="none" stroke="#ccc" strokeWidth={1.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z" />
                     </svg>
-                  </button>
-                )}
-              </div>
-            ))
+                  </div>
+                  <p className="text-xs font-black text-[#bbb] uppercase tracking-widest text-center">Sin comentarios aún</p>
+                  <p className="text-xs text-[#ccc] text-center">¡Sé el primero en comentar!</p>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -193,17 +297,20 @@ export default function CommentsSheet({ jellyId, jellyTitle, currentUserId, cano
           </div>
         )}
 
-        {/* Input */}
-        <div className="flex items-center gap-3 px-4 py-3 border-t border-[#f0ede8] flex-shrink-0 pb-safe"
-          style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
+        {/* Input — always visible, flex-shrink-0 prevents it from being squashed */}
+        <div
+          className="flex items-center gap-3 px-4 py-3 border-t border-[#f0ede8] flex-shrink-0"
+          style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
+        >
           <input
             ref={inputRef}
             type="text"
             value={text}
             onChange={e => setText(e.target.value)}
             onKeyDown={e => e.key === "Enter" && !e.shiftKey && submitComment()}
-            placeholder="Agrega un comentario..."
+            placeholder={currentUserId ? "Agrega un comentario..." : "Inicia sesión para comentar"}
             maxLength={500}
+            readOnly={!currentUserId}
             className="flex-1 bg-[#f5f2ee] rounded-2xl px-4 py-2.5 text-sm text-[#2a2a2a] placeholder:text-[#bbb] outline-none"
           />
           <button
