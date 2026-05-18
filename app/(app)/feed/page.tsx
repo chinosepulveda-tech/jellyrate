@@ -106,38 +106,72 @@ export default function FeedPage() {
     }
 
     // Circle avg via canonical_id:
-    // All jellyrates from myCircle that share the same canonical_id are averaged together.
-    // This means if Pablo, Chino, and User A each independently rated "Hail Mary",
-    // the score shown on Pablo's card reflects all three circle ratings — not just Pablo's.
+    // = all independent jellyrates for the same canonical item (from myCircle)
+    // + all rejellies on any of those jellyrates (from myCircle)
+    // Each user counted once — jellyrate takes precedence over rejelly if both exist.
     const canonicalIds = [...new Set(
       data.map((j: any) => j.canonical_id).filter(Boolean)
     )] as string[];
 
-    // canonical_id → array of circle ratings for that item
     type CircleRating = { user_id: string; username: string; avatar_url: string | null; score: number };
     const canonicalScoresMap: Record<string, CircleRating[]> = {};
 
     if (canonicalIds.length > 0) {
-      const { data: canonicalRatings } = await supabase
+      // 1. Independent jellyrates for these canonical items from myCircle
+      const { data: canonicalJellyrates } = await supabase
         .from("jellyrates")
         .select("id, user_id, score, canonical_id")
         .in("canonical_id", canonicalIds)
         .in("user_id", myCircle);
 
-      if (canonicalRatings?.length) {
-        // Fetch profiles for users not already in profileMap
-        const extraIds = [...new Set(
-          canonicalRatings.map((r: any) => r.user_id).filter((id: string) => !profileMap[id])
+      // Fetch profiles not already in profileMap
+      const extraIds = [...new Set(
+        (canonicalJellyrates ?? []).map((r: any) => r.user_id).filter((id: string) => !profileMap[id])
+      )];
+      if (extraIds.length > 0) {
+        const { data: ep } = await supabase
+          .from("profiles").select("id, username, avatar_url").in("id", extraIds);
+        (ep ?? []).forEach((p: any) => { profileMap[p.id] = p; });
+      }
+
+      // Build map and track which jellyrate IDs belong to which canonical item
+      const jellyIdToCanonical: Record<string, string> = {};
+      (canonicalJellyrates ?? []).forEach((r: any) => {
+        jellyIdToCanonical[r.id] = r.canonical_id;
+        if (!canonicalScoresMap[r.canonical_id]) canonicalScoresMap[r.canonical_id] = [];
+        canonicalScoresMap[r.canonical_id].push({
+          user_id: r.user_id,
+          username: profileMap[r.user_id]?.username ?? "usuario",
+          avatar_url: profileMap[r.user_id]?.avatar_url ?? null,
+          score: r.score,
+        });
+      });
+
+      // 2. Rejellies on any of those canonical jellyrates from myCircle
+      const canonicalJellyIds = Object.keys(jellyIdToCanonical);
+      if (canonicalJellyIds.length > 0) {
+        const { data: circleRejellies } = await supabase
+          .from("rejellies")
+          .select("user_id, score, jellyrate_id")
+          .in("jellyrate_id", canonicalJellyIds)
+          .in("user_id", myCircle);
+
+        // Fetch profiles for rejellyiers not yet in profileMap
+        const rejExtraIds = [...new Set(
+          (circleRejellies ?? []).map((r: any) => r.user_id).filter((id: string) => !profileMap[id])
         )];
-        if (extraIds.length > 0) {
-          const { data: extraProfiles } = await supabase
-            .from("profiles").select("id, username, avatar_url").in("id", extraIds);
-          (extraProfiles ?? []).forEach((p: any) => { profileMap[p.id] = p; });
+        if (rejExtraIds.length > 0) {
+          const { data: rp } = await supabase
+            .from("profiles").select("id, username, avatar_url").in("id", rejExtraIds);
+          (rp ?? []).forEach((p: any) => { profileMap[p.id] = p; });
         }
 
-        canonicalRatings.forEach((r: any) => {
-          if (!canonicalScoresMap[r.canonical_id]) canonicalScoresMap[r.canonical_id] = [];
-          canonicalScoresMap[r.canonical_id].push({
+        (circleRejellies ?? []).forEach((r: any) => {
+          const canonicalId = jellyIdToCanonical[r.jellyrate_id];
+          if (!canonicalId) return;
+          // Count each user once — skip if they already have an independent jellyrate
+          if (canonicalScoresMap[canonicalId]?.some((s) => s.user_id === r.user_id)) return;
+          canonicalScoresMap[canonicalId].push({
             user_id: r.user_id,
             username: profileMap[r.user_id]?.username ?? "usuario",
             avatar_url: profileMap[r.user_id]?.avatar_url ?? null,
@@ -148,17 +182,18 @@ export default function FeedPage() {
     }
 
     return data.map((j: any) => {
-      // All circle ratings for this canonical item (including the post's own creator)
-      const canonicalRatings = j.canonical_id ? (canonicalScoresMap[j.canonical_id] ?? []) : [];
+      const canonicalRatings: CircleRating[] = j.canonical_id
+        ? (canonicalScoresMap[j.canonical_id] ?? [])
+        : [];
       const allScores = canonicalRatings.length > 0
-        ? canonicalRatings.map((r: CircleRating) => r.score)
+        ? canonicalRatings.map((r) => r.score)
         : [j.score];
       const circleAvg = Math.round(
-        (allScores.reduce((a: number, b: number) => a + b, 0) / allScores.length) * 10
+        (allScores.reduce((a, b) => a + b, 0) / allScores.length) * 10
       ) / 10;
 
       // friendRatings strip: circle members OTHER than this card's creator
-      const friendRatings = canonicalRatings.filter((r: CircleRating) => r.user_id !== j.user_id);
+      const friendRatings = canonicalRatings.filter((r) => r.user_id !== j.user_id);
 
       return {
         ...j,
