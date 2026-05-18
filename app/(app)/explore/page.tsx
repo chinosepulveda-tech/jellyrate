@@ -155,7 +155,7 @@ export default function ExplorePage() {
   return (
     <div className="bg-[#f2f1ed] min-h-screen">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/98 backdrop-blur shadow-sm">
+      <header className="sticky top-0 safe-header z-40 bg-white/98 backdrop-blur shadow-sm">
         <div className="px-4 pt-3.5 pb-2">
           {/* Tab switcher */}
           <div className="flex gap-1 mb-3">

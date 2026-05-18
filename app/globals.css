@@ -27,6 +27,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* iOS PWA: push sticky headers below the status bar */
+.safe-header {
+  padding-top: env(safe-area-inset-top);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

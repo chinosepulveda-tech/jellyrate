@@ -171,7 +171,7 @@ export default function FeedPage() {
       )}
 
       {/* ── Header ── */}
-      <header className="sticky top-0 z-40 bg-white/98 backdrop-blur shadow-sm">
+      <header className="sticky top-0 safe-header z-40 bg-white/98 backdrop-blur shadow-sm">
         <div className="flex items-center justify-between px-4 py-3.5">
           <h1 className="text-2xl font-black tracking-tight">
             <span className="text-[#e8363a]">Jelly</span><span className="text-[#2a2a2a]">Rate</span>

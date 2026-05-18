@@ -63,7 +63,7 @@ export default function JellyDetailPage() {
   return (
     <div className="min-h-screen bg-[#f2f1ed]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/98 backdrop-blur shadow-sm">
+      <header className="sticky top-0 safe-header z-40 bg-white/98 backdrop-blur shadow-sm">
         <div className="flex items-center px-4 py-3.5 gap-3">
           <button
             onClick={() => router.back()}

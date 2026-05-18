@@ -94,7 +94,7 @@ export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-[#f2f1ed]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/98 backdrop-blur shadow-sm">
+      <header className="sticky top-0 safe-header z-40 bg-white/98 backdrop-blur shadow-sm">
         <div className="flex items-center px-4 py-3.5 gap-3">
           <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-xl bg-[#e8363a]">
             <svg width="18" height="18" fill="none" stroke="white" strokeWidth={2.5} viewBox="0 0 24 24">

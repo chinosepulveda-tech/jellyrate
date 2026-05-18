@@ -363,7 +363,7 @@ export default function ActivityPage() {
   return (
     <div className="bg-[#f2f1ed] min-h-screen">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/98 backdrop-blur shadow-sm">
+      <header className="sticky top-0 safe-header z-40 bg-white/98 backdrop-blur shadow-sm">
         <div className="flex items-center justify-between px-4 py-3.5">
           <div className="w-8" />
           <div className="flex items-center gap-2">

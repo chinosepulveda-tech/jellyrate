@@ -170,7 +170,7 @@ export default function CreatePage() {
   return (
     <div className="min-h-dvh flex flex-col bg-[#f2f1ed]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/98 backdrop-blur shadow-sm">
+      <header className="sticky top-0 safe-header z-40 bg-white/98 backdrop-blur shadow-sm">
         <div className="flex items-center justify-between px-4 py-3.5">
           <button onClick={goBack} className="text-[#999] text-sm font-semibold w-16">
             {step === "photo" ? "Cancelar" : "← Atrás"}
