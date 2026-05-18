@@ -766,7 +766,7 @@ function Slide3() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <StepCard n="1" label="Captura" title="Tómale una foto." color={JR.red} rotate={-1.5}>
+          <StepCard n="1" label="Captura" title="Toma o sube una foto." color={JR.red} rotate={-1.5}>
             <svg viewBox="0 0 64 64" width="100%" height="100%">
               <rect x="6" y="16" width="52" height="40" fill="none" stroke="#fff" strokeWidth="3" />
               <rect x="22" y="10" width="20" height="10" fill="none" stroke="#fff" strokeWidth="3" />
