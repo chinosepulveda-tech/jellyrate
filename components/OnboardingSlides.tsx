@@ -322,7 +322,6 @@ function Slide1() {
         }}
       >
         <Eyebrow dot={JR.red}>Hola</Eyebrow>
-        <Eyebrow color={JR.ink}>01 / 04</Eyebrow>
       </div>
 
       <div style={{ ...chevronStrip(JR.beige, JR.cream), height: 28, flexShrink: 0 }} />
@@ -662,10 +661,10 @@ function StepCard({
         background: color,
         color: fg,
         border: `2.5px solid ${JR.ink}`,
-        padding: "18px 18px 18px 22px",
+        padding: "12px 12px 12px 16px",
         display: "flex",
         alignItems: "center",
-        gap: 18,
+        gap: 14,
         transform: rotate ? `rotate(${rotate}deg)` : undefined,
         position: "relative",
       }}
@@ -674,10 +673,10 @@ function StepCard({
         style={{
           fontFamily: fontDisplay,
           fontWeight: 900,
-          fontSize: 72,
+          fontSize: 60,
           lineHeight: 0.82,
           letterSpacing: "-0.06em",
-          minWidth: 60,
+          minWidth: 48,
         }}
       >
         {n}
@@ -687,7 +686,7 @@ function StepCard({
           style={{
             fontFamily: fontBody,
             fontWeight: 900,
-            fontSize: 10,
+            fontSize: 9,
             letterSpacing: "0.22em",
             textTransform: "uppercase",
             opacity: 0.8,
@@ -699,16 +698,16 @@ function StepCard({
           style={{
             fontFamily: fontDisplay,
             fontWeight: 900,
-            fontSize: 26,
-            lineHeight: 0.95,
+            fontSize: 20,
+            lineHeight: 1.0,
             letterSpacing: "-0.03em",
-            marginTop: 4,
+            marginTop: 3,
           }}
         >
           {title}
         </div>
       </div>
-      <div style={{ width: 64, height: 64, flexShrink: 0 }}>{children}</div>
+      <div style={{ width: 52, height: 52, flexShrink: 0 }}>{children}</div>
     </div>
   );
 }
@@ -736,7 +735,6 @@ function Slide3() {
         }}
       >
         <Eyebrow dot={JR.red}>Cómo funciona</Eyebrow>
-        <Eyebrow color={JR.ink}>03 / 04</Eyebrow>
       </div>
 
       <div style={{ ...chevronStrip(JR.beige, JR.cream), height: 24, flexShrink: 0 }} />
@@ -753,11 +751,11 @@ function Slide3() {
           style={{
             fontFamily: fontDisplay,
             fontWeight: 900,
-            fontSize: 38,
+            fontSize: 34,
             lineHeight: 0.92,
             letterSpacing: "-0.04em",
             color: JR.ink,
-            marginBottom: 22,
+            marginBottom: 12,
           }}
         >
           Tres pasos.
@@ -765,7 +763,7 @@ function Slide3() {
           <span style={{ color: JR.red }}>Cero ciencia.</span>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <StepCard n="1" label="Captura" title="Toma o sube una foto." color={JR.red} rotate={-1.5}>
             <svg viewBox="0 0 64 64" width="100%" height="100%">
               <rect x="6" y="16" width="52" height="40" fill="none" stroke="#fff" strokeWidth="3" />
@@ -925,7 +923,6 @@ function Slide4() {
         }}
       >
         <Eyebrow dot={JR.teal}>La gracia</Eyebrow>
-        <Eyebrow color={JR.ink}>04 / 04</Eyebrow>
       </div>
 
       <div style={{ ...chevronStrip(JR.beige, JR.cream), height: 24, flexShrink: 0 }} />
@@ -933,10 +930,10 @@ function Slide4() {
       <div
         style={{
           flex: 1,
-          padding: "18px 22px 22px",
+          padding: "14px 22px 16px",
           display: "flex",
           flexDirection: "column",
-          gap: 12,
+          gap: 8,
           overflow: "hidden",
         }}
       >
@@ -999,7 +996,7 @@ function Slide4() {
           </div>
 
           <div style={{ position: "relative" }}>
-            <PhotoPlaceholder label="foto del lugar" height={130} tone="#d9bfa3" />
+            <PhotoPlaceholder label="foto del lugar" height={100} tone="#d9bfa3" />
             <div style={{ position: "absolute", top: -18, right: 14, zIndex: 2 }}>
               <JellyBadge color={JR.red} size={86} rotate={-7}>
                 <div
