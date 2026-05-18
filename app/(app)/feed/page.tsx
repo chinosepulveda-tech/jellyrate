@@ -253,6 +253,16 @@ export default function FeedPage() {
   const loadInitial = useCallback(async (uid?: string) => {
     setLoading(true);
     pageRef.current = 0;
+    // Re-fetch following IDs on every refresh so unfollow/follow changes
+    // are reflected immediately without needing to remount the page.
+    if (uid) {
+      const { data: followData } = await supabase
+        .from("follows")
+        .select("following_id")
+        .eq("follower_id", uid)
+        .eq("status", "accepted");
+      followingIdsRef.current = (followData ?? []).map((f: any) => f.following_id);
+    }
     const items = await fetchPage(uid, 0);
     setJellies(items);
     setHasMore(items.length === PAGE_SIZE);
