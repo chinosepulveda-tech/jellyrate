@@ -177,7 +177,12 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
   const toast = useToast();
   const [liked, setLiked] = useState(jelly.user_liked ?? false);
   const [likes, setLikes] = useState(jelly.likes_count ?? 0);
-  const [commentsCount, setCommentsCount] = useState(jelly.comments_count ?? 0);
+  // Total visible in CommentsSheet: author note + text comments + rejellies
+  const initialActivityCount =
+    (jelly.description ? 1 : 0) +
+    (jelly.comments_count ?? 0) +
+    (jelly.rejellies_count ?? 0);
+  const [commentsCount, setCommentsCount] = useState(initialActivityCount);
   const [rejellies, setRejellies] = useState(jelly.rejellies_count ?? 0);
   const [saved, setSaved] = useState(jelly.user_saved ?? false);
   const [showRejelly, setShowRejelly] = useState(false);
