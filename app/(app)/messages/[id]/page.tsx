@@ -123,21 +123,12 @@ export default function ChatPage() {
       if (!user) { router.replace("/login"); return; }
       setMyId(user.id);
 
-      // Verify participation
-      const { data: cp } = await supabase
-        .from("conversation_participants")
-        .select("user_id")
-        .eq("conversation_id", conversationId)
-        .neq("user_id", user.id)
-        .maybeSingle();
+      // Get the other participant via SECURITY DEFINER function (bypasses RLS for other's row)
+      const { data: otherProfile } = await supabase
+        .rpc("get_dm_other_user", { conv_id: conversationId });
 
-      if (cp) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id, username, full_name, avatar_url, bio, gender, feed_gender_filter, is_private, is_private_activity, created_at")
-          .eq("id", cp.user_id)
-          .single();
-        if (profile) setOther(profile as Profile);
+      if (otherProfile && otherProfile.length > 0) {
+        setOther(otherProfile[0] as Profile);
       }
 
       await loadMessages();
