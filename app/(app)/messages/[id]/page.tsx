@@ -91,12 +91,14 @@ export default function ChatPage() {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
 
-  const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     setTimeout(() => {
-      bottomRef.current?.scrollIntoView({ behavior });
+      const el = listRef.current;
+      if (!el) return;
+      el.scrollTo({ top: el.scrollHeight, behavior });
     }, 50);
   }, []);
 
@@ -229,7 +231,10 @@ export default function ChatPage() {
   const isMine = (msg: Message) => msg.sender_id === myId;
 
   return (
-    <div className="flex flex-col h-dvh bg-[#f2f1ed]">
+    <div
+      className="flex flex-col bg-[#f2f1ed] overflow-hidden"
+      style={{ height: "calc(100svh - 72px - env(safe-area-inset-bottom, 0px))" }}
+    >
       {/* Header */}
       <header className="safe-header z-40 bg-white border-b border-[#ede9e3] flex-shrink-0">
         <div className="flex items-center gap-3 px-3 py-3">
@@ -260,7 +265,7 @@ export default function ChatPage() {
       </header>
 
       {/* Message list */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+      <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
         {loading ? (
           <div className="flex justify-center py-10">
             <div className="w-6 h-6 rounded-full border-2 border-[#e8363a] border-t-transparent animate-spin" />
@@ -321,7 +326,6 @@ export default function ChatPage() {
                 </div>
               );
             })}
-            <div ref={bottomRef} />
           </>
         )}
       </div>
