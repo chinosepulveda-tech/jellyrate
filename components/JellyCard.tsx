@@ -539,20 +539,19 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
   const username = jelly.profile?.username ?? "usuario";
 
   // ── Photo touch: pinch-to-zoom + double-tap like ─────────────────────
-  const [imgScale, setImgScale] = useState(1);
+  // We manipulate the img DOM node directly (no React state) for 60fps pinch zoom.
   const photoContainerRef = useRef<HTMLDivElement>(null);
-  // Refs so native event listeners always see current values (no stale closure)
+  const photoImgRef = useRef<HTMLImageElement>(null);
   const imgScaleRef = useRef(1);
   const likedRef = useRef(liked);
   const currentUserIdRef = useRef(currentUserId);
 
-  useEffect(() => { imgScaleRef.current = imgScale; }, [imgScale]);
   useEffect(() => { likedRef.current = liked; }, [liked]);
   useEffect(() => { currentUserIdRef.current = currentUserId; }, [currentUserId]);
 
   useEffect(() => {
-    const el = photoContainerRef.current;
-    if (!el) return;
+    const container = photoContainerRef.current;
+    if (!container) return;
 
     let pinchState: { dist: number; scale: number } | null = null;
     let isPinching = false;
@@ -564,20 +563,35 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
       return Math.sqrt(dx * dx + dy * dy);
     }
 
+    function applyScale(val: number, animated = false) {
+      const img = photoImgRef.current;
+      if (!img) return;
+      imgScaleRef.current = val;
+      img.style.transition = animated ? "transform 0.2s ease" : "none";
+      img.style.transform = `scale(${val})`;
+    }
+
     function onStart(e: TouchEvent) {
       if (e.touches.length === 2) {
         isPinching = true;
+        // Disable transition during active pinch for maximum responsiveness
+        const img = photoImgRef.current;
+        if (img) img.style.transition = "none";
         pinchState = { dist: getDist(e.touches), scale: imgScaleRef.current };
       }
     }
 
     function onMove(e: TouchEvent) {
       if (e.touches.length === 2 && pinchState) {
-        e.preventDefault(); // stops browser page-zoom & scroll
+        e.preventDefault(); // prevent browser page-zoom / scroll
         const ratio = getDist(e.touches) / pinchState.dist;
         const next = Math.min(4, Math.max(1, pinchState.scale * ratio));
-        imgScaleRef.current = next;
-        setImgScale(next);
+        // Write directly to DOM — no React render cycle, no lag
+        const img = photoImgRef.current;
+        if (img) {
+          imgScaleRef.current = next;
+          img.style.transform = `scale(${next})`;
+        }
       }
     }
 
@@ -586,8 +600,7 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
         if (e.touches.length === 0) {
           isPinching = false;
           pinchState = null;
-          // Snap back if barely zoomed
-          setImgScale(s => (s < 1.08 ? 1 : s));
+          if (imgScaleRef.current < 1.08) applyScale(1, true); // snap back
         }
         return; // don't treat pinch-end as a tap
       }
@@ -608,18 +621,18 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
     function onCancel() {
       isPinching = false;
       pinchState = null;
-      setImgScale(s => (s < 1.08 ? 1 : s));
+      if (imgScaleRef.current < 1.08) applyScale(1, true);
     }
 
-    el.addEventListener("touchstart", onStart,  { passive: true });
-    el.addEventListener("touchmove",  onMove,   { passive: false }); // must be non-passive for preventDefault
-    el.addEventListener("touchend",   onEnd,    { passive: true });
-    el.addEventListener("touchcancel", onCancel, { passive: true });
+    container.addEventListener("touchstart",  onStart,  { passive: true });
+    container.addEventListener("touchmove",   onMove,   { passive: false }); // non-passive for preventDefault
+    container.addEventListener("touchend",    onEnd,    { passive: true });
+    container.addEventListener("touchcancel", onCancel, { passive: true });
     return () => {
-      el.removeEventListener("touchstart",  onStart);
-      el.removeEventListener("touchmove",   onMove);
-      el.removeEventListener("touchend",    onEnd);
-      el.removeEventListener("touchcancel", onCancel);
+      container.removeEventListener("touchstart",  onStart);
+      container.removeEventListener("touchmove",   onMove);
+      container.removeEventListener("touchend",    onEnd);
+      container.removeEventListener("touchcancel", onCancel);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally empty — uses refs for live values
@@ -749,15 +762,19 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
         {jelly.photo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
+            ref={photoImgRef}
             src={jelly.photo_url}
             alt={jelly.title}
+            draggable={false}
             className="w-full h-auto block"
             style={{
               maxHeight: "85vh",
-              transform: `scale(${imgScale})`,
               transformOrigin: "center center",
-              transition: imgScale === 1 ? "transform 0.2s ease" : "none",
               willChange: "transform",
+              // Prevent iOS from showing native image callout (save/share menu) on tap
+              WebkitTouchCallout: "none" as any,
+              userSelect: "none",
+              touchAction: "none",
             }}
           />
         ) : (
