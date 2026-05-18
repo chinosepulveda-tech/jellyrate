@@ -744,7 +744,7 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
       <div
         ref={photoContainerRef}
         className="relative bg-[#f0ede8] select-none overflow-hidden"
-        style={{ touchAction: "pan-y" }}
+        style={{ touchAction: "none" }}
       >
         {jelly.photo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
