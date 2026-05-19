@@ -245,11 +245,12 @@ function EditSheet({
 }: {
   jelly: JellyRate;
   onClose: () => void;
-  onSaved: (title: string, description: string) => void;
+  onSaved: (title: string, description: string, score: number) => void;
 }) {
   const supabase = createClient();
   const [title, setTitle] = useState(jelly.title);
   const [description, setDescription] = useState(jelly.description ?? "");
+  const [score, setScore] = useState(jelly.score);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -259,11 +260,11 @@ function EditSheet({
     setSaving(true);
     const { error: err } = await supabase
       .from("jellyrates")
-      .update({ title: t, description: description.trim() || null })
+      .update({ title: t, description: description.trim() || null, score })
       .eq("id", jelly.id);
     setSaving(false);
     if (err) { setError("No se pudo guardar. Intenta de nuevo."); return; }
-    onSaved(t, description.trim());
+    onSaved(t, description.trim(), score);
     onClose();
   }
 
@@ -279,9 +280,32 @@ function EditSheet({
         </div>
         <div className="px-5 pb-2 pt-1">
           <h2 className="font-black text-base text-[#1a1a1a] uppercase tracking-wide">Editar JellyRate</h2>
-          <p className="text-xs text-[#aaa] mt-0.5">Solo el título y el comentario son editables.</p>
         </div>
         <div className="px-5 pb-4 flex flex-col gap-4">
+          {/* Score */}
+          <div>
+            <label className="text-[11px] font-black text-[#888] uppercase tracking-widest block mb-2">Tu nota</label>
+            <div className="flex items-center gap-4 bg-[#f8f5f1] rounded-2xl px-4 py-3">
+              <span
+                className="text-4xl font-black w-10 text-center leading-none"
+                style={{ color: ScoreColor(score) }}
+              >
+                {score}
+              </span>
+              <input
+                type="range"
+                min={1}
+                max={10}
+                value={score}
+                onChange={e => setScore(Number(e.target.value))}
+                className="flex-1"
+              />
+            </div>
+            <p className="text-xs font-black uppercase tracking-widest mt-1.5 text-center" style={{ color: ScoreColor(score) }}>
+              {ScoreLabel(score)}
+            </p>
+          </div>
+          {/* Title */}
           <div>
             <label className="text-[11px] font-black text-[#888] uppercase tracking-widest block mb-1.5">Título</label>
             <input
@@ -292,6 +316,7 @@ function EditSheet({
               style={{ boxShadow: "2px 2px 0 #1a1a1a" }}
             />
           </div>
+          {/* Description */}
           <div>
             <label className="text-[11px] font-black text-[#888] uppercase tracking-widest block mb-1.5">Comentario</label>
             <textarea
@@ -305,7 +330,7 @@ function EditSheet({
             />
           </div>
           {error && <p className="text-xs text-[#e8363a] font-bold">{error}</p>}
-          <div className="flex gap-3 pb-4" style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}>
+          <div className="flex gap-3" style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}>
             <button
               onClick={onClose}
               className="flex-1 py-3 border-2 border-[#1a1a1a] text-xs font-black text-[#1a1a1a] uppercase tracking-wide active:opacity-70"
@@ -530,6 +555,7 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
   const [deleted, setDeleted] = useState(false);
   const [localTitle, setLocalTitle] = useState(jelly.title);
   const [localDescription, setLocalDescription] = useState(jelly.description ?? "");
+  const [localScore, setLocalScore] = useState(jelly.score);
   const [heartPop, setHeartPop] = useState(false);
   const lastTap = useRef<number>(0);
 
@@ -845,8 +871,8 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
             style={{ textShadow: "0 2px 6px rgba(0,0,0,0.4)" }}
           >
             {(jelly.total_ratings ?? 1) > 1
-              ? (jelly.avg_score ?? jelly.score)
-              : jelly.score}
+              ? (jelly.avg_score ?? localScore)
+              : localScore}
           </span>
           {(jelly.total_ratings ?? 1) > 1 && (
             <span className="text-[9px] font-bold text-white/80 leading-none mt-0.5">
@@ -1051,9 +1077,9 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
       {/* ── Edit Sheet ── */}
       {showEdit && (
         <EditSheet
-          jelly={{ ...jelly, title: localTitle, description: localDescription }}
+          jelly={{ ...jelly, title: localTitle, description: localDescription, score: localScore }}
           onClose={() => setShowEdit(false)}
-          onSaved={(t, d) => { setLocalTitle(t); setLocalDescription(d); }}
+          onSaved={(t, d, s) => { setLocalTitle(t); setLocalDescription(d); setLocalScore(s); }}
         />
       )}
 
