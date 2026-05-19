@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useLayoutEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -539,9 +539,9 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
   const username = jelly.profile?.username ?? "usuario";
 
   // ── Photo touch: pinch-to-zoom + double-tap like ─────────────────────
-  // We manipulate the img DOM node directly (no React state) for 60fps pinch zoom.
+  // Direct DOM manipulation — no React state — for true 60fps pinch zoom.
+  // useLayoutEffect fires synchronously after paint so the ref is guaranteed set.
   const photoContainerRef = useRef<HTMLDivElement>(null);
-  const photoImgRef = useRef<HTMLImageElement>(null);
   const imgScaleRef = useRef(1);
   const likedRef = useRef(liked);
   const currentUserIdRef = useRef(currentUserId);
@@ -549,7 +549,7 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
   useEffect(() => { likedRef.current = liked; }, [liked]);
   useEffect(() => { currentUserIdRef.current = currentUserId; }, [currentUserId]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const container = photoContainerRef.current;
     if (!container) return;
 
@@ -563,46 +563,48 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
       return Math.sqrt(dx * dx + dy * dy);
     }
 
+    // Query the img every time — avoids any ref timing issues
+    function getImg(): HTMLImageElement | null {
+      return container!.querySelector("img");
+    }
+
     function applyScale(val: number, animated = false) {
-      const img = photoImgRef.current;
+      const img = getImg();
       if (!img) return;
       imgScaleRef.current = val;
       img.style.transition = animated ? "transform 0.2s ease" : "none";
-      img.style.transform = `scale(${val})`;
+      img.style.transform = val === 1 ? "none" : `scale(${val})`;
     }
 
     function onStart(e: TouchEvent) {
       if (e.touches.length === 2) {
+        // preventDefault here (non-passive) stops iOS from claiming the gesture
+        e.preventDefault();
         isPinching = true;
-        // Disable transition during active pinch for maximum responsiveness
-        const img = photoImgRef.current;
+        const img = getImg();
         if (img) img.style.transition = "none";
         pinchState = { dist: getDist(e.touches), scale: imgScaleRef.current };
       }
     }
 
     function onMove(e: TouchEvent) {
-      if (e.touches.length === 2 && pinchState) {
-        e.preventDefault(); // prevent browser page-zoom / scroll
-        const ratio = getDist(e.touches) / pinchState.dist;
-        const next = Math.min(4, Math.max(1, pinchState.scale * ratio));
-        // Write directly to DOM — no React render cycle, no lag
-        const img = photoImgRef.current;
-        if (img) {
-          imgScaleRef.current = next;
-          img.style.transform = `scale(${next})`;
-        }
-      }
+      if (!isPinching || e.touches.length < 2 || !pinchState) return;
+      e.preventDefault();
+      const ratio = getDist(e.touches) / pinchState.dist;
+      const next = Math.min(4, Math.max(1, pinchState.scale * ratio));
+      imgScaleRef.current = next;
+      const img = getImg();
+      if (img) img.style.transform = `scale(${next})`;
     }
 
     function onEnd(e: TouchEvent) {
       if (isPinching) {
-        if (e.touches.length === 0) {
+        if (e.touches.length < 2) {
           isPinching = false;
           pinchState = null;
-          if (imgScaleRef.current < 1.08) applyScale(1, true); // snap back
+          if (imgScaleRef.current < 1.08) applyScale(1, true);
         }
-        return; // don't treat pinch-end as a tap
+        return;
       }
       // Double-tap → like
       const now = Date.now();
@@ -624,8 +626,9 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
       if (imgScaleRef.current < 1.08) applyScale(1, true);
     }
 
-    container.addEventListener("touchstart",  onStart,  { passive: true });
-    container.addEventListener("touchmove",   onMove,   { passive: false }); // non-passive for preventDefault
+    // touchstart must be non-passive so we can call preventDefault for 2-finger
+    container.addEventListener("touchstart",  onStart,  { passive: false });
+    container.addEventListener("touchmove",   onMove,   { passive: false });
     container.addEventListener("touchend",    onEnd,    { passive: true });
     container.addEventListener("touchcancel", onCancel, { passive: true });
     return () => {
@@ -756,27 +759,23 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
       {/* ── Photo ── */}
       <div
         ref={photoContainerRef}
-        className="relative bg-[#f0ede8] select-none overflow-hidden"
-        style={{ touchAction: "none" }}
+        className="jelly-photo-zone relative bg-[#f0ede8] overflow-hidden"
       >
         {jelly.photo_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
+          <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            ref={photoImgRef}
             src={jelly.photo_url}
             alt={jelly.title}
             draggable={false}
             className="w-full h-auto block"
-            style={{
-              maxHeight: "85vh",
-              transformOrigin: "center center",
-              willChange: "transform",
-              // Prevent iOS from showing native image callout (save/share menu) on tap
-              WebkitTouchCallout: "none" as any,
-              userSelect: "none",
-              touchAction: "none",
-            }}
+            style={{ maxHeight: "85vh", transformOrigin: "center center", willChange: "transform" }}
           />
+          {/* Transparent overlay: sits above the <img> so iOS doesn't treat
+              touches as image taps (which trigger the save/share callout).
+              Touch events bubble up to photoContainerRef normally. */}
+          <div className="absolute inset-0" style={{ zIndex: 2 }} />
+          </>
         ) : (
           <div className="aspect-square flex items-center justify-center">
             <svg width="48" height="48" fill="none" stroke="#ddd" strokeWidth={1} viewBox="0 0 24 24">
