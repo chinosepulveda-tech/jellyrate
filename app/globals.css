@@ -125,13 +125,13 @@ input[type="range"]::-moz-range-thumb {
 /* Photo zone: prevent iOS from intercepting pinch gestures and showing
    the native image action sheet (save/share callout) */
 .jelly-photo-zone {
-  touch-action: none;
+  touch-action: pan-y;
   -webkit-touch-callout: none;
   user-select: none;
   -webkit-user-select: none;
 }
 .jelly-photo-zone img {
-  touch-action: none;
+  touch-action: pan-y;
   -webkit-touch-callout: none;
   user-select: none;
   -webkit-user-select: none;
