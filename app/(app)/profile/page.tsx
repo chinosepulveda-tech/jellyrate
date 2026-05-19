@@ -203,7 +203,7 @@ export default function ProfilePage() {
         <div className="flex mt-5 border-t border-[#f0ede8]">
           <div className="flex-1 flex flex-col items-center py-3">
             <span className="text-xl font-black text-[#e8363a]">{stats.total}</span>
-            <span className="text-[9px] font-black text-[#bbb] uppercase tracking-widest mt-0.5">FOTOS</span>
+            <span className="text-[9px] font-black text-[#bbb] uppercase tracking-widest mt-0.5">JELLYRATES</span>
           </div>
           <Link href={`/profile/${username}/followers`} className="flex-1 flex flex-col items-center py-3 border-x border-[#f0ede8] active:bg-[#fafaf9]">
             <span className="text-xl font-black text-[#e8363a]">{stats.followers}</span>
