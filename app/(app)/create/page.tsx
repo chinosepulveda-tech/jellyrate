@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 type Step = "photo" | "rate" | "details" | "posting";
 type Audience = "all" | "male" | "female";
 
-const CATEGORIES = ["Comida", "Película", "Bebida", "Lugar", "Música", "Producto", "Libro", "Viaje", "Servicio", "Juego"];
+const CATEGORIES = ["Comida", "Película", "Bebida", "Lugar", "Música", "Producto", "Libro", "Viaje", "Servicio", "Juego", "Apps"];
 
 function ScoreColor(score: number) {
   if (score >= 8) return "#22c55e";
