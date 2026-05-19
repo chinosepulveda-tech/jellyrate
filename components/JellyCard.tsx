@@ -543,6 +543,8 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
   // useLayoutEffect fires synchronously after paint so the ref is guaranteed set.
   const photoContainerRef = useRef<HTMLDivElement>(null);
   const imgScaleRef = useRef(1);
+  const imgTxRef = useRef(0);
+  const imgTyRef = useRef(0);
   const likedRef = useRef(liked);
   const currentUserIdRef = useRef(currentUserId);
 
@@ -553,7 +555,11 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
     const container = photoContainerRef.current;
     if (!container) return;
 
-    let pinchState: { dist: number; scale: number } | null = null;
+    let pinchState: {
+      dist: number; scale: number;
+      tx: number; ty: number;
+      mx0: number; my0: number;
+    } | null = null;
     let isPinching = false;
     let lastTapTs = 0;
 
@@ -563,38 +569,74 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
       return Math.sqrt(dx * dx + dy * dy);
     }
 
-    // Query the img every time — avoids any ref timing issues
+    function getMid(t: TouchList) {
+      return {
+        x: (t[0].clientX + t[1].clientX) / 2,
+        y: (t[0].clientY + t[1].clientY) / 2,
+      };
+    }
+
     function getImg(): HTMLImageElement | null {
       return container!.querySelector("img");
     }
 
-    function applyScale(val: number, animated = false) {
+    // Apply scale + translate. transform-origin is always "0 0" so the math
+    // stays clean: screenPt = containerOffset + translate + elementPt * scale.
+    function applyTransform(s: number, tx: number, ty: number, animated = false) {
       const img = getImg();
       if (!img) return;
-      imgScaleRef.current = val;
+      if (s <= 1) { s = 1; tx = 0; ty = 0; }
+      else {
+        // Clamp so image never goes outside the container
+        const W = container!.offsetWidth;
+        const H = img.offsetHeight;
+        tx = Math.min(0, Math.max(tx, W * (1 - s)));
+        ty = Math.min(0, Math.max(ty, H * (1 - s)));
+      }
+      imgScaleRef.current = s;
+      imgTxRef.current = tx;
+      imgTyRef.current = ty;
       img.style.transition = animated ? "transform 0.2s ease" : "none";
-      img.style.transform = val === 1 ? "none" : `scale(${val})`;
+      img.style.transformOrigin = "0 0";
+      img.style.transform = s === 1 ? "none" : `translate(${tx}px,${ty}px) scale(${s})`;
     }
 
     function onStart(e: TouchEvent) {
       if (e.touches.length === 2) {
-        // preventDefault here (non-passive) stops iOS from claiming the gesture
         e.preventDefault();
         isPinching = true;
         const img = getImg();
         if (img) img.style.transition = "none";
-        pinchState = { dist: getDist(e.touches), scale: imgScaleRef.current };
+        const mid = getMid(e.touches);
+        const rect = container!.getBoundingClientRect();
+        pinchState = {
+          dist:  getDist(e.touches),
+          scale: imgScaleRef.current,
+          tx:    imgTxRef.current,
+          ty:    imgTyRef.current,
+          // midpoint in container-local coords at gesture start
+          mx0:   mid.x - rect.left,
+          my0:   mid.y - rect.top,
+        };
       }
     }
 
     function onMove(e: TouchEvent) {
       if (!isPinching || e.touches.length < 2 || !pinchState) return;
       e.preventDefault();
-      const ratio = getDist(e.touches) / pinchState.dist;
-      const next = Math.min(4, Math.max(1, pinchState.scale * ratio));
-      imgScaleRef.current = next;
-      const img = getImg();
-      if (img) img.style.transform = `scale(${next})`;
+      const s = Math.min(4, Math.max(1, pinchState.scale * getDist(e.touches) / pinchState.dist));
+      const mid = getMid(e.touches);
+      const rect = container!.getBoundingClientRect();
+      const mx = mid.x - rect.left;
+      const my = mid.y - rect.top;
+      // The element-space point under the initial pinch center:
+      //   ex = (mx0 - tx0) / s0
+      // After new scale s, to keep it under the current finger midpoint (mx, my):
+      //   tx = mx - ex * s  →  tx = mx - (mx0 - tx0) * (s / s0)
+      const f = s / pinchState.scale;
+      const tx = mx - (pinchState.mx0 - pinchState.tx) * f;
+      const ty = my - (pinchState.my0 - pinchState.ty) * f;
+      applyTransform(s, tx, ty);
     }
 
     function onEnd(e: TouchEvent) {
@@ -602,7 +644,7 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
         if (e.touches.length < 2) {
           isPinching = false;
           pinchState = null;
-          if (imgScaleRef.current < 1.08) applyScale(1, true);
+          if (imgScaleRef.current < 1.08) applyTransform(1, 0, 0, true);
         }
         return;
       }
@@ -623,7 +665,7 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
     function onCancel() {
       isPinching = false;
       pinchState = null;
-      if (imgScaleRef.current < 1.08) applyScale(1, true);
+      if (imgScaleRef.current < 1.08) applyTransform(1, 0, 0, true);
     }
 
     // touchstart must be non-passive so we can call preventDefault for 2-finger
@@ -769,7 +811,7 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
             alt={jelly.title}
             draggable={false}
             className="w-full h-auto block"
-            style={{ maxHeight: "85vh", transformOrigin: "center center", willChange: "transform" }}
+            style={{ maxHeight: "85vh", willChange: "transform" }}
           />
           {/* Transparent overlay: sits above the <img> so iOS doesn't treat
               touches as image taps (which trigger the save/share callout).
