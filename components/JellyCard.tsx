@@ -508,11 +508,7 @@ function CategoryBadge({ category }: { category: string }) {
   );
 }
 
-export function ScoreColor(score: number) {
-  if (score >= 9) return "#16a34a";
-  if (score >= 8) return "#22c55e";
-  if (score >= 6) return "#f59e0b";
-  if (score >= 4) return "#f97316";
+export function ScoreColor(_score: number) {
   return "#e8363a";
 }
 

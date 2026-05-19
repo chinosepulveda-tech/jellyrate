@@ -11,10 +11,7 @@ type Audience = "all" | "male" | "female";
 
 const CATEGORIES = ["Comida", "Película", "Bebida", "Lugar", "Música", "Producto", "Libro", "Viaje", "Servicio", "Juego", "Apps"];
 
-function ScoreColor(score: number) {
-  if (score >= 8) return "#22c55e";
-  if (score >= 6) return "#f59e0b";
-  if (score >= 4) return "#f97316";
+function ScoreColor(_score: number) {
   return "#e8363a";
 }
 
