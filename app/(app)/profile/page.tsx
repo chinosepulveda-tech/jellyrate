@@ -200,17 +200,17 @@ export default function ProfilePage() {
         </div>
 
         {/* Stats row */}
-        <div className="flex mt-5 border-t border-[#f0ede8]">
-          <div className="flex-1 flex flex-col items-center py-3">
-            <span className="text-xl font-black text-[#e8363a]">{stats.total}</span>
-            <span className="text-[9px] font-black text-[#bbb] uppercase tracking-widest mt-0.5">JELLYRATES</span>
+        <div className="flex gap-2 mt-5 px-1">
+          <div className="flex-1 flex flex-col items-center py-2.5 rounded-xl bg-[#fff0f0]">
+            <span className="text-xl font-black text-[#e8363a] leading-tight">{stats.total}</span>
+            <span className="text-[9px] font-black text-[#e8363a]/70 uppercase tracking-widest mt-0.5">JELLYRATES</span>
           </div>
-          <Link href={`/profile/${username}/followers`} className="flex-1 flex flex-col items-center py-3 border-x border-[#f0ede8] active:bg-[#fafaf9]">
-            <span className="text-xl font-black text-[#e8363a]">{stats.followers}</span>
+          <Link href={`/profile/${username}/followers`} className="flex-1 flex flex-col items-center py-2.5 rounded-xl bg-[#f5f2ee] active:bg-[#ede9e3]">
+            <span className="text-xl font-black text-[#2a2a2a] leading-tight">{stats.followers}</span>
             <span className="text-[9px] font-black text-[#bbb] uppercase tracking-widest mt-0.5">SEGUIDORES</span>
           </Link>
-          <Link href={`/profile/${username}/following`} className="flex-1 flex flex-col items-center py-3 active:bg-[#fafaf9]">
-            <span className="text-xl font-black text-[#e8363a]">{stats.following}</span>
+          <Link href={`/profile/${username}/following`} className="flex-1 flex flex-col items-center py-2.5 rounded-xl bg-[#f5f2ee] active:bg-[#ede9e3]">
+            <span className="text-xl font-black text-[#2a2a2a] leading-tight">{stats.following}</span>
             <span className="text-[9px] font-black text-[#bbb] uppercase tracking-widest mt-0.5">SIGUIENDO</span>
           </Link>
         </div>

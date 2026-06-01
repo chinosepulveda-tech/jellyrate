@@ -771,11 +771,18 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
           </div>
         </Link>
 
-        {/* Username + title */}
+        {/* Username + category chip + title */}
         <div className="flex-1 min-w-0">
-          <Link href={`/profile/${username}`}>
-            <p className="font-black text-xs uppercase tracking-widest text-[#2a2a2a] leading-tight">{username}</p>
-          </Link>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Link href={`/profile/${username}`}>
+              <p className="font-black text-xs uppercase tracking-widest text-[#2a2a2a] leading-tight">{username}</p>
+            </Link>
+            {jelly.category && (
+              <span className="text-[10px] font-bold text-[#888] bg-[#f5f2ee] border border-[#e8e3dd] rounded-full px-2 py-px leading-tight">
+                {cleanCategory(jelly.category)}
+              </span>
+            )}
+          </div>
           <p className="text-xs text-[#888] truncate leading-tight mt-0.5">{localTitle}</p>
         </div>
 
@@ -849,30 +856,20 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
           </div>
         )}
 
-        {/* ── Score badge: top-left ── */}
+        {/* ── Score badge: pill top-left ── */}
         <div
-          className="absolute top-0 left-0 flex flex-col items-center justify-center"
-          style={{
-            backgroundColor: "#e8363a",
-            width: 60,
-            minHeight: 56,
-            paddingBottom: (jelly.total_ratings ?? 1) > 1 ? 6 : 0,
-            paddingTop: (jelly.total_ratings ?? 1) > 1 ? 6 : 0,
-            borderBottomRightRadius: 14,
-            boxShadow: "3px 3px 10px rgba(0,0,0,0.35)",
-          }}
+          className="absolute top-3 left-3 flex items-center gap-0.5 rounded-xl px-3 py-1.5"
+          style={{ backgroundColor: "#e8363a", zIndex: 3 }}
         >
-          <span
-            className="text-2xl font-black text-white leading-none"
-            style={{ textShadow: "0 2px 6px rgba(0,0,0,0.4)" }}
-          >
+          <span className="text-xl font-black text-white leading-none">
             {(jelly.total_ratings ?? 1) > 1
               ? (jelly.avg_score ?? localScore)
               : localScore}
           </span>
+          <span className="text-[10px] font-bold text-white/60 leading-none">/10</span>
           {(jelly.total_ratings ?? 1) > 1 && (
-            <span className="text-[9px] font-bold text-white/80 leading-none mt-0.5">
-              {jelly.total_ratings} notas
+            <span className="text-[9px] font-bold text-white/70 leading-none ml-1">
+              · {jelly.total_ratings}
             </span>
           )}
         </div>
@@ -895,16 +892,6 @@ export default function JellyCard({ jelly, currentUserId }: Props) {
         )}
       </div>
 
-      {/* ── "Creado por" bar ── */}
-      <div className="bg-[#2a2a2a] px-4 py-2 flex items-center justify-between">
-        <p className="text-xs text-[#aaa]">
-          Creado por{" "}
-          <Link href={`/profile/${username}`}>
-            <span className="font-black text-white">{username}</span>
-          </Link>
-        </p>
-        {jelly.category && <CategoryBadge category={jelly.category} />}
-      </div>
 
       {/* ── Friend ratings strip ── */}
       {(jelly.friendRatings?.length ?? 0) > 0 && (
